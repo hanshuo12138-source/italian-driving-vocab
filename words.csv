@@ -1,0 +1,51 @@
+chapter,italian,chinese,pronunciation,example_it,example_zh,note
+道路标志,segnale,标志,sen-YA-le,Rispettare sempre il segnale stradale.,必须始终遵守道路标志。,通用词
+道路标志,segnale di pericolo,危险标志,sen-YA-le di pe-RI-ko-lo,Il segnale di pericolo avvisa di una situazione rischiosa.,危险标志提醒前方有风险情况。,三角形常见
+道路标志,segnale di divieto,禁止标志,sen-YA-le di di-VYE-to,Il segnale di divieto vieta un comportamento.,禁止标志表示某种行为被禁止。,圆形常见
+道路标志,segnale di obbligo,强制标志,sen-YA-le di ob-BLI-go,Il segnale di obbligo impone una direzione o un comportamento.,强制标志要求某个方向或行为。,圆形蓝底常见
+道路标志,precedenza,优先通行权,pre-che-DEN-tsa,Dare precedenza ai veicoli provenienti da destra.,给右侧来车让行。,考试高频
+道路标志,stop,停车让行,stop,Al segnale di stop bisogna fermarsi.,遇到 STOP 标志必须停车。,必须完全停下
+道路标志,senso vietato,禁止驶入,SEN-so vye-TA-to,Il senso vietato non consente l'accesso ai veicoli.,禁止驶入不允许车辆进入。,注意和禁行区别
+道路标志,senso unico,单行道,SEN-so U-ni-ko,In una strada a senso unico si circola in una sola direzione.,单行道只能按一个方向行驶。,
+道路标志,attraversamento pedonale,人行横道,at-tra-ver-sa-MEN-to pe-do-NA-le,Rallentare vicino all'attraversamento pedonale.,接近人行横道要减速。,行人优先
+道路标志,rotatoria,环岛,ro-ta-TO-ria,Nella rotatoria bisogna rispettare la precedenza.,在环岛内要遵守优先规则。,
+行驶规则,corsia,车道,KOR-sia,La corsia di emergenza non deve essere usata senza motivo.,非必要不得使用应急车道。,
+行驶规则,carreggiata,车行道,kar-red-DJA-ta,La carreggiata e' la parte della strada destinata ai veicoli.,车行道是道路中供车辆行驶的部分。,
+行驶规则,incrocio,交叉路口,in-KRO-cho,All'incrocio bisogna moderare la velocita'.,到交叉路口必须控制速度。,
+行驶规则,sorpasso,超车,sor-PAS-so,Il sorpasso e' vietato in condizioni di scarsa visibilita'.,视线不良时禁止超车。,高频规则
+行驶规则,distanza di sicurezza,安全距离,di-STAN-tsa di si-ku-RET-tsa,Mantenere la distanza di sicurezza dal veicolo che precede.,与前车保持安全距离。,
+行驶规则,velocita',速度,ve-lo-chi-TA,La velocita' deve essere adeguata alle condizioni della strada.,速度必须适应道路情况。,
+行驶规则,limite di velocita',限速,LI-mi-te di ve-lo-chi-TA,Il limite di velocita' non deve essere superato.,不得超过限速。,
+行驶规则,frenata,制动 / 刹车,fre-NA-ta,Una frenata brusca puo' causare pericolo.,急刹车可能造成危险。,
+行驶规则,svolta,转弯,ZVOL-ta,Prima della svolta bisogna segnalare la manovra.,转弯前必须示意操作。,
+行驶规则,retromarcia,倒车,re-tro-MAR-cha,La retromarcia deve essere effettuata con prudenza.,倒车必须谨慎进行。,
+安全与风险,prudenza,谨慎,pru-DEN-tsa,Guidare con prudenza riduce il rischio di incidenti.,谨慎驾驶可以降低事故风险。,
+安全与风险,pericolo,危险,pe-RI-ko-lo,In caso di pericolo bisogna rallentare.,遇到危险时要减速。,
+安全与风险,incidente,事故,in-chi-DEN-te,Dopo un incidente bisogna prestare soccorso.,事故后必须提供救助。,
+安全与风险,soccorso,救助,sok-KOR-so,Omettere il soccorso e' un comportamento grave.,不提供救助是严重行为。,
+安全与风险,visibilita',能见度,vi-zi-bi-li-TA,Con scarsa visibilita' bisogna accendere le luci.,能见度低时必须开灯。,
+安全与风险,aderenza,附着力 / 抓地力,a-de-REN-tsa,La pioggia riduce l'aderenza degli pneumatici.,雨水会降低轮胎抓地力。,
+安全与风险,aquaplaning,水滑,A-kwa-pla-ning,L'aquaplaning puo' far perdere il controllo del veicolo.,水滑可能导致车辆失控。,
+安全与风险,stanchezza,疲劳,stan-KET-tsa,La stanchezza diminuisce l'attenzione alla guida.,疲劳会降低驾驶注意力。,
+安全与风险,alcool,酒精,AL-kol,Guidare sotto l'effetto dell'alcool e' vietato.,酒后驾驶是禁止的。,
+安全与风险,cintura di sicurezza,安全带,chin-TU-ra di si-ku-RET-tsa,La cintura di sicurezza deve essere sempre allacciata.,必须始终系好安全带。,
+车辆部件,fari,车灯,FA-ri,Accendere i fari quando la visibilita' e' ridotta.,能见度降低时打开车灯。,
+车辆部件,indicatori di direzione,转向灯,in-di-ka-TO-ri di di-re-TSYO-ne,Gli indicatori di direzione segnalano la manovra.,转向灯用于提示驾驶操作。,也叫 frecce
+车辆部件,pneumatici,轮胎,pneu-MA-ti-chi,Controllare periodicamente la pressione degli pneumatici.,定期检查轮胎气压。,
+车辆部件,freni,刹车系统,FRE-ni,I freni devono essere sempre efficienti.,刹车系统必须始终有效。,
+车辆部件,specchietti,后视镜,spek-KYET-ti,Regolare gli specchietti prima di partire.,出发前调整后视镜。,
+车辆部件,clacson,喇叭,KLAK-son,Il clacson si usa solo in caso di necessita'.,喇叭只在必要时使用。,
+车辆部件,targa,车牌,TAR-ga,La targa deve essere leggibile.,车牌必须清晰可读。,
+车辆部件,assicurazione,保险,as-si-ku-ra-TSYO-ne,Il veicolo deve avere assicurazione valida.,车辆必须有有效保险。,
+车辆部件,revisione,年检 / 车辆检查,re-vi-ZYO-ne,La revisione periodica e' obbligatoria.,定期年检是强制的。,
+车辆部件,patente,驾照,pa-TEN-te,La patente deve essere valida per guidare.,驾驶时驾照必须有效。,
+交通参与者,pedone,行人,pe-DO-ne,Il pedone ha precedenza sulle strisce pedonali.,行人在斑马线上有优先权。,
+交通参与者,ciclista,骑自行车者,chi-KLI-sta,Il ciclista deve rispettare le norme della circolazione.,骑自行车者必须遵守交通规则。,
+交通参与者,motociclista,摩托车驾驶者,mo-to-chi-KLI-sta,Il motociclista deve indossare il casco.,摩托车驾驶者必须戴头盔。,
+交通参与者,passeggero,乘客,pas-sed-DJE-ro,Il passeggero deve usare la cintura quando prevista.,乘客在规定情况下必须系安全带。,
+交通参与者,conducente,驾驶员,kon-du-CHEN-te,Il conducente e' responsabile della sicurezza del veicolo.,驾驶员对车辆安全负责。,
+交通参与者,veicolo,车辆,VE-i-ko-lo,Ogni veicolo deve rispettare le regole della circolazione.,每辆车都必须遵守交通规则。,
+交通参与者,ambulanza,救护车,am-bu-LAN-tsa,Bisogna agevolare il passaggio dell'ambulanza in servizio.,必须方便执行任务的救护车通行。,
+交通参与者,autobus,公交车,AU-to-bus,Fare attenzione agli autobus in fermata.,注意停靠中的公交车。,
+交通参与者,autocarro,货车,au-to-KAR-ro,L'autocarro puo' avere spazi di frenata piu' lunghi.,货车制动距离可能更长。,
+交通参与者,scuolabus,校车,SKWO-la-bus,Prestare attenzione vicino a uno scuolabus fermo.,靠近停下的校车时要注意。,
