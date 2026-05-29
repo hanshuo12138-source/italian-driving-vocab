@@ -37,47 +37,159 @@ def apply_theme() -> None:
         """
         <style>
         :root {
-            --bg: #f6f8fb;
-            --panel: #ffffff;
-            --ink: #182230;
-            --muted: #667085;
-            --line: #e4e7ec;
-            --blue: #2f6fed;
-            --teal: #12b886;
-            --coral: #ff6b6b;
-            --amber: #f59f00;
+            --bg: #f3f6f3;
+            --panel: #fffefa;
+            --panel-soft: #f8faf6;
+            --ink: #16211f;
+            --muted: #60706c;
+            --line: #dfe6df;
+            --line-strong: #c9d6cf;
+            --blue: #3769d6;
+            --teal: #197c68;
+            --coral: #c85a42;
+            --amber: #b98518;
+            --sidebar: #111b18;
+            --sidebar-soft: #1b2a25;
         }
 
         .stApp {
             background:
-                linear-gradient(180deg, #eef5ff 0, #f6f8fb 230px, #f6f8fb 100%);
+                linear-gradient(180deg, #e7f0eb 0, #f3f6f3 320px, #f8faf6 100%);
             color: var(--ink);
         }
 
+        .main .block-container {
+            max-width: 1180px;
+            padding-top: 34px;
+            padding-bottom: 56px;
+        }
+
         [data-testid="stSidebar"] {
-            background: #ffffff;
-            border-right: 1px solid var(--line);
+            background: linear-gradient(180deg, var(--sidebar) 0, #16221f 58%, #101715 100%);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 18px 0 45px rgba(22, 33, 31, 0.18);
+        }
+
+        [data-testid="stSidebar"] h1,
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] span {
+            color: #ecf4ef;
+        }
+
+        [data-testid="stSidebar"] small,
+        [data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
+            color: rgba(236, 244, 239, 0.72);
+        }
+
+        [data-testid="stSidebar"] input {
+            background: #f7faf7;
+            color: var(--ink);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 8px;
+        }
+
+        [data-testid="stSidebar"] div[data-testid="stForm"] {
+            background: var(--sidebar-soft);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 8px;
+            padding: 14px 12px 12px;
+        }
+
+        [data-testid="stSidebar"] div[data-testid="stAlert"] {
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        [data-testid="stSidebar"] hr {
+            border-color: rgba(255, 255, 255, 0.10);
+        }
+
+        h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+            color: var(--ink);
+            letter-spacing: 0;
+        }
+
+        .hero-panel {
+            position: relative;
+            overflow: hidden;
+            background:
+                linear-gradient(135deg, #132520 0%, #1d3d35 48%, #2c426c 100%);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 8px;
+            padding: 28px;
+            box-shadow: 0 24px 70px rgba(22, 33, 31, 0.22);
+            margin-bottom: 18px;
+        }
+
+        .hero-panel::after {
+            content: "";
+            position: absolute;
+            inset: auto 0 0 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--teal), var(--amber), var(--coral), var(--blue));
+        }
+
+        .hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #cde8dc;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            margin-bottom: 10px;
+        }
+
+        .hero-kicker::before {
+            content: "";
+            width: 24px;
+            height: 2px;
+            background: var(--amber);
+            border-radius: 999px;
         }
 
         .app-title {
-            font-size: 28px;
+            color: #f8fbf7;
+            font-size: 34px;
             line-height: 1.2;
-            font-weight: 800;
+            font-weight: 900;
             letter-spacing: 0;
-            margin: 4px 0 6px;
+            margin: 0 0 8px;
         }
 
         .app-subtitle {
-            color: var(--muted);
+            color: rgba(248, 251, 247, 0.76);
             font-size: 15px;
-            margin-bottom: 16px;
+            max-width: 680px;
+            margin: 0;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 24px 0 14px;
+            color: var(--ink);
+            font-size: 21px;
+            font-weight: 900;
+        }
+
+        .section-title::before {
+            content: "";
+            width: 7px;
+            height: 22px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, var(--teal), var(--blue));
         }
 
         .metric-row {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-            margin: 18px 0 22px;
+            gap: 14px;
+            margin: 18px 0 20px;
         }
 
         .metric-card,
@@ -87,11 +199,35 @@ def apply_theme() -> None:
             background: var(--panel);
             border: 1px solid var(--line);
             border-radius: 8px;
-            box-shadow: 0 10px 28px rgba(16, 24, 40, 0.06);
+            box-shadow: 0 16px 38px rgba(22, 33, 31, 0.08);
         }
 
         .metric-card {
-            padding: 14px 16px;
+            position: relative;
+            overflow: hidden;
+            padding: 16px 17px;
+        }
+
+        .metric-card::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--teal);
+        }
+
+        .metric-card:nth-child(2)::before {
+            background: var(--blue);
+        }
+
+        .metric-card:nth-child(3)::before {
+            background: var(--coral);
+        }
+
+        .metric-card:nth-child(4)::before {
+            background: var(--amber);
         }
 
         .metric-label {
@@ -102,22 +238,43 @@ def apply_theme() -> None:
 
         .metric-value {
             color: var(--ink);
-            font-size: 24px;
-            font-weight: 800;
+            font-size: 28px;
+            font-weight: 900;
         }
 
         .chapter-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 14px;
+            gap: 16px;
         }
 
         .chapter-card {
-            padding: 18px;
-            min-height: 150px;
+            position: relative;
+            overflow: hidden;
+            padding: 19px;
+            min-height: 158px;
+            transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+        }
+
+        .chapter-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--line-strong);
+            box-shadow: 0 22px 48px rgba(22, 33, 31, 0.13);
+        }
+
+        .chapter-card::after {
+            content: "";
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 72px;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(55, 105, 214, 0.08), rgba(25, 124, 104, 0.08));
         }
 
         .chapter-topline {
+            position: relative;
+            z-index: 1;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -127,7 +284,7 @@ def apply_theme() -> None:
 
         .chapter-name {
             font-size: 18px;
-            font-weight: 800;
+            font-weight: 900;
         }
 
         .pill {
@@ -136,9 +293,9 @@ def apply_theme() -> None:
             border-radius: 999px;
             padding: 4px 10px;
             font-size: 12px;
-            font-weight: 700;
-            background: #e7f5ff;
-            color: #1c64d1;
+            font-weight: 800;
+            background: #eaf3ef;
+            color: var(--teal);
             white-space: nowrap;
         }
 
@@ -148,66 +305,92 @@ def apply_theme() -> None:
         }
 
         .progress-track {
-            height: 8px;
+            height: 9px;
             border-radius: 999px;
-            background: #edf2f7;
+            background: #e6ece6;
             overflow: hidden;
             margin: 16px 0 8px;
+            border: 1px solid rgba(22, 33, 31, 0.04);
         }
 
         .progress-fill {
             height: 100%;
             border-radius: 999px;
-            background: linear-gradient(90deg, var(--blue), var(--teal));
+            background: linear-gradient(90deg, var(--teal), var(--blue), var(--amber));
         }
 
         .word-card {
-            padding: 16px;
-            margin-bottom: 12px;
+            padding: 18px 18px 16px;
+            margin-bottom: 13px;
+            border-left: 4px solid var(--teal);
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+
+        .word-card:hover {
+            border-color: var(--blue);
+            box-shadow: 0 20px 44px rgba(22, 33, 31, 0.11);
         }
 
         .word-title {
             font-size: 22px;
-            font-weight: 850;
+            font-weight: 900;
             margin-bottom: 4px;
         }
 
         .word-translation {
-            color: #344054;
+            color: #2b3b38;
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 800;
             margin-bottom: 8px;
         }
 
         .example {
             color: var(--muted);
-            border-left: 3px solid #9ec5fe;
-            padding-left: 10px;
-            margin-top: 8px;
+            background: var(--panel-soft);
+            border-left: 3px solid var(--blue);
+            border-radius: 0 8px 8px 0;
+            padding: 10px 12px;
+            margin-top: 10px;
             font-size: 14px;
         }
 
         .flash-card {
-            padding: 34px 24px;
-            min-height: 330px;
+            position: relative;
+            overflow: hidden;
+            padding: 42px 28px;
+            min-height: 360px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
+            background:
+                linear-gradient(160deg, #fffefa 0%, #f6fbf7 56%, #edf5fb 100%);
+            border: 1px solid var(--line-strong);
+        }
+
+        .flash-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--teal), var(--amber), var(--coral), var(--blue));
         }
 
         .flash-word {
-            font-size: 44px;
+            color: var(--ink);
+            font-size: 48px;
             line-height: 1.15;
             font-weight: 900;
             margin-bottom: 10px;
         }
 
         .flash-chinese {
-            font-size: 28px;
-            font-weight: 850;
-            color: #1c64d1;
+            font-size: 29px;
+            font-weight: 900;
+            color: var(--teal);
             margin: 12px 0 6px;
         }
 
@@ -219,26 +402,54 @@ def apply_theme() -> None:
         }
 
         .badge {
-            border: 1px solid var(--line);
+            border: 1px solid #d9e4dd;
             border-radius: 999px;
             padding: 3px 8px;
-            color: var(--muted);
+            color: #37534c;
             font-size: 12px;
-            background: #fff;
+            font-weight: 800;
+            background: #f2f7f3;
         }
 
         div[data-testid="stButton"] > button {
             border-radius: 8px;
-            border: 1px solid #d0d5dd;
-            font-weight: 700;
+            border: 1px solid #c9d6cf;
+            background: #fffefa;
+            color: var(--ink);
+            font-weight: 800;
+            min-height: 40px;
+            box-shadow: 0 8px 18px rgba(22, 33, 31, 0.06);
         }
 
         div[data-testid="stButton"] > button[kind="primary"] {
-            background: var(--blue);
-            border-color: var(--blue);
+            background: linear-gradient(135deg, var(--teal), var(--blue));
+            border-color: transparent;
+            color: #ffffff;
+        }
+
+        div[data-baseweb="select"] > div,
+        div[data-testid="stTextInput"] input {
+            border-radius: 8px;
+            border-color: var(--line-strong);
+        }
+
+        div[data-testid="stAlert"] {
+            border-radius: 8px;
         }
 
         @media (max-width: 760px) {
+            .main .block-container {
+                padding-top: 22px;
+            }
+
+            .hero-panel {
+                padding: 22px 18px;
+            }
+
+            .app-title {
+                font-size: 28px;
+            }
+
             .metric-row {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -465,9 +676,14 @@ def mark_seen(state: dict[str, Any], word_id: str, result: str) -> None:
 
 
 def render_header() -> None:
-    st.markdown('<div class="app-title">意大利驾照理论词汇</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="app-subtitle">按章节学习、闪卡复习、收藏重点词，并把所有进度保存在本地。</div>',
+        """
+        <div class="hero-panel">
+            <div class="hero-kicker">Patente B · Teoria</div>
+            <div class="app-title">意大利驾照理论词汇</div>
+            <div class="app-subtitle">从道路标志、行驶规则到安全风险，把考试高频词汇整理成可复习的个人词库。</div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -562,7 +778,7 @@ def render_word_card(row: pd.Series, state: dict[str, Any], key_prefix: str) -> 
 def render_home(words: pd.DataFrame, state: dict[str, Any]) -> None:
     render_header()
     render_metrics(words, state)
-    st.subheader("章节")
+    st.markdown('<div class="section-title">章节</div>', unsafe_allow_html=True)
 
     learned = state_set(state, "learned")
     chapter_html = ['<div class="chapter-grid">']
@@ -586,7 +802,6 @@ def render_home(words: pd.DataFrame, state: dict[str, Any]) -> None:
         )
     chapter_html.append("</div>")
     st.markdown("".join(chapter_html), unsafe_allow_html=True)
-    st.info("从左侧切换到“章节学习”可进入具体章节。")
 
 
 def render_chapter(words: pd.DataFrame, state: dict[str, Any]) -> None:
