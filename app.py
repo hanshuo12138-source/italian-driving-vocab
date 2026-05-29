@@ -7,6 +7,7 @@ import secrets
 from html import escape
 from datetime import datetime
 from pathlib import Path
+from textwrap import dedent
 from typing import Any
 
 import pandas as pd
@@ -34,7 +35,7 @@ st.set_page_config(
 
 def apply_theme() -> None:
     st.markdown(
-        """
+        dedent("""
         <style>
         :root {
             --bg: #f3f6f3;
@@ -463,7 +464,7 @@ def apply_theme() -> None:
             }
         }
         </style>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
@@ -677,13 +678,13 @@ def mark_seen(state: dict[str, Any], word_id: str, result: str) -> None:
 
 def render_header() -> None:
     st.markdown(
-        """
+        dedent("""
         <div class="hero-panel">
             <div class="hero-kicker">Patente B · Teoria</div>
             <div class="app-title">意大利驾照理论词汇</div>
             <div class="app-subtitle">从道路标志、行驶规则到安全风险，把考试高频词汇整理成可复习的个人词库。</div>
         </div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
@@ -696,7 +697,7 @@ def render_metrics(words: pd.DataFrame, state: dict[str, Any]) -> None:
     progress = round(len(learned) / total * 100) if total else 0
 
     st.markdown(
-        f"""
+        dedent(f"""
         <div class="metric-row">
             <div class="metric-card">
                 <div class="metric-label">词汇总数</div>
@@ -717,7 +718,7 @@ def render_metrics(words: pd.DataFrame, state: dict[str, Any]) -> None:
         </div>
         <div class="progress-track"><div class="progress-fill" style="width:{progress}%"></div></div>
         <div class="small-muted">总体掌握进度 {progress}%</div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
@@ -742,7 +743,7 @@ def render_word_card(row: pd.Series, state: dict[str, Any], key_prefix: str) -> 
         note_html = f'<div class="small-muted" style="margin-top:8px;">{h(row["note"])}</div>'
 
     st.markdown(
-        f"""
+        dedent(f"""
         <div class="word-card">
             <div class="word-title">{h(row['italian'])}</div>
             <div class="word-translation">{h(row['chinese'])}</div>
@@ -751,7 +752,7 @@ def render_word_card(row: pd.Series, state: dict[str, Any], key_prefix: str) -> 
             {note_html}
             <div class="badge-line">{''.join(badges)}</div>
         </div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
@@ -788,7 +789,7 @@ def render_home(words: pd.DataFrame, state: dict[str, Any]) -> None:
         progress = round(learned_count / total * 100) if total else 0
         sample = "、".join(chapter_words["italian"].head(3))
         chapter_html.append(
-            f"""
+            dedent(f"""
             <div class="chapter-card">
                 <div class="chapter-topline">
                     <div class="chapter-name">{h(chapter)}</div>
@@ -798,7 +799,7 @@ def render_home(words: pd.DataFrame, state: dict[str, Any]) -> None:
                 <div class="progress-track"><div class="progress-fill" style="width:{progress}%"></div></div>
                 <div class="small-muted">已掌握 {learned_count}/{total}</div>
             </div>
-            """
+            """)
         )
     chapter_html.append("</div>")
     st.markdown("".join(chapter_html), unsafe_allow_html=True)
@@ -860,14 +861,14 @@ def render_flashcards(words: pd.DataFrame, state: dict[str, Any]) -> None:
         answer_html = '<div class="small-muted">先在心里作答，再翻开答案</div>'
 
     st.markdown(
-        f"""
+        dedent(f"""
         <div class="flash-card">
             <div class="small-muted">{h(row['chapter'])} · {progress_text}</div>
             <div class="flash-word">{h(row['italian'])}</div>
             <div class="small-muted">{h(row['pronunciation'])}</div>
             {answer_html}
         </div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
