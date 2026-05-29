@@ -548,6 +548,60 @@ def hash_password(password: str, salt: str) -> str:
     return digest.hex()
 
 
+def remember_token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def save_remember_token(username: str) -> str:
+    username = normalize_username(username)
+    accounts = load_accounts()
+    account = accounts.get(username)
+    if not account:
+        return ""
+
+    token = secrets.token_urlsafe(32)
+    tokens = account.setdefault("remember_tokens", [])
+    tokens.append(
+        {
+            "token_hash": remember_token_hash(token),
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+        }
+    )
+    account["remember_tokens"] = tokens[-5:]
+    save_accounts(accounts)
+    return token
+
+
+def revoke_remember_token(username: str, token: str) -> None:
+    username = normalize_username(username)
+    if not username or not token:
+        return
+
+    accounts = load_accounts()
+    account = accounts.get(username)
+    if not account:
+        return
+
+    token_hash = remember_token_hash(token)
+    account["remember_tokens"] = [
+        item for item in account.get("remember_tokens", []) if item.get("token_hash") != token_hash
+    ]
+    save_accounts(accounts)
+
+
+def authenticate_remember_token(username: str, token: str) -> bool:
+    username = normalize_username(username)
+    account = load_accounts().get(username)
+    if not account or not token:
+        return False
+
+    token_hash = remember_token_hash(token)
+    return any(
+        secrets.compare_digest(item.get("token_hash", ""), token_hash)
+        for item in account.get("remember_tokens", [])
+    )
+
+
 def create_account(username: str, password: str) -> tuple[bool, str]:
     username = normalize_username(username)
     if len(username) < 3:
@@ -582,12 +636,32 @@ def authenticate(username: str, password: str) -> bool:
     return secrets.compare_digest(hash_password(password, salt), expected_hash)
 
 
+def query_param_value(key: str) -> str:
+    value = st.query_params.get(key, "")
+    if isinstance(value, list):
+        return str(value[0]) if value else ""
+    return str(value)
+
+
+def restore_login_from_query() -> None:
+    if st.session_state.get("auth_user"):
+        return
+
+    username = query_param_value("user")
+    token = query_param_value("remember")
+    if username and token and authenticate_remember_token(username, token):
+        st.session_state["auth_user"] = normalize_username(username)
+
+
 def render_auth_sidebar() -> str | None:
+    restore_login_from_query()
     current_user = st.session_state.get("auth_user")
     st.sidebar.title("账户")
     if current_user:
         st.sidebar.success(f"已登录：{current_user}")
         if st.sidebar.button("退出登录", use_container_width=True):
+            revoke_remember_token(str(current_user), query_param_value("remember"))
+            st.query_params.clear()
             st.session_state.pop("auth_user", None)
             st.rerun()
         return str(current_user)
@@ -596,6 +670,7 @@ def render_auth_sidebar() -> str | None:
     with st.sidebar.form("account_form"):
         username = st.text_input("用户名", placeholder="例如：mario2026")
         password = st.text_input("密码", type="password")
+        remember_me = st.checkbox("保持登录", value=True)
         submitted = st.form_submit_button(mode, use_container_width=True)
 
     if submitted:
@@ -604,15 +679,27 @@ def render_auth_sidebar() -> str | None:
             ok, message = create_account(username, password)
             if ok:
                 st.session_state["auth_user"] = message
+                if remember_me:
+                    token = save_remember_token(message)
+                    if token:
+                        st.query_params["user"] = message
+                        st.query_params["remember"] = token
                 st.rerun()
             st.sidebar.error(message)
         elif authenticate(username, password):
             st.session_state["auth_user"] = username
+            if remember_me:
+                token = save_remember_token(username)
+                if token:
+                    st.query_params["user"] = username
+                    st.query_params["remember"] = token
+            else:
+                st.query_params.clear()
             st.rerun()
         else:
             st.sidebar.error("用户名或密码不正确。")
 
-    st.sidebar.info("创建账户后，你的收藏、生词本和学习进度会和密码绑定。")
+    st.sidebar.info("保持登录适合自己的手机或电脑。不要把带 remember 参数的网址发给别人。")
     return None
 
 

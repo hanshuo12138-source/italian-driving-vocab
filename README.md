@@ -31,6 +31,8 @@ streamlit run app.py
 - `data/accounts.json`：保存账户信息，密码以加盐哈希形式保存。
 - `data/users/*.json`：按账户分别保存收藏、生词、掌握状态和闪卡练习统计。
 
+登录时可以勾选“保持登录”。这个功能会生成一个私密登录令牌，请不要把带有 `remember` 参数的网址发给别人。
+
 ## 互联网部署
 
 参考 `DEPLOYMENT.md`。

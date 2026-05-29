@@ -25,6 +25,7 @@ C:\Users\20767\Documents\Codex\2026-05-30\python-streamlit-1-2-3-4
 - 收藏功能
 - 数据来自 `words.csv`
 - 用户可以创建账户并登录
+- 登录时可以选择保持登录
 - 学习进度、收藏、生词本按账户保存在 `data/users/*.json`
 - 中文界面
 - 类 Busuu 的卡片式学习界面
