@@ -104,6 +104,21 @@ def apply_theme() -> None:
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
+        [data-testid="stSidebar"] div[data-testid="stButton"] > button,
+        [data-testid="stSidebar"] div[data-testid="stFormSubmitButton"] > button {
+            background: #f7faf7;
+            color: #16211f;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            box-shadow: none;
+        }
+
+        [data-testid="stSidebar"] div[data-testid="stButton"] > button:hover,
+        [data-testid="stSidebar"] div[data-testid="stFormSubmitButton"] > button:hover {
+            background: #ffffff;
+            color: #16211f;
+            border-color: rgba(255, 255, 255, 0.42);
+        }
+
         [data-testid="stSidebar"] hr {
             border-color: rgba(255, 255, 255, 0.10);
         }
