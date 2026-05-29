@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import secrets
 from html import escape
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,7 @@ WORDS_PATH = BASE_DIR / "words.csv"
 DATA_DIR = BASE_DIR / "data"
 STATE_PATH = DATA_DIR / "user_state.json"
 USERS_DIR = DATA_DIR / "users"
+ACCOUNTS_PATH = DATA_DIR / "accounts.json"
 
 REQUIRED_COLUMNS = {"chapter", "italian", "chinese"}
 OPTIONAL_COLUMNS = ["pronunciation", "example_it", "example_zh", "note"]
@@ -297,10 +299,109 @@ def default_state() -> dict[str, Any]:
     }
 
 
-def state_path_for_profile(profile_name: str) -> Path:
-    clean_name = profile_name.strip() or "访客"
-    digest = hashlib.sha256(clean_name.encode("utf-8")).hexdigest()[:16]
+def normalize_username(username: str) -> str:
+    return username.strip().lower()
+
+
+def state_path_for_user(username: str) -> Path:
+    digest = hashlib.sha256(normalize_username(username).encode("utf-8")).hexdigest()[:16]
     return USERS_DIR / f"{digest}.json"
+
+
+def load_accounts() -> dict[str, Any]:
+    DATA_DIR.mkdir(exist_ok=True)
+    if not ACCOUNTS_PATH.exists():
+        return {}
+
+    try:
+        with ACCOUNTS_PATH.open("r", encoding="utf-8") as file:
+            return json.load(file)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_accounts(accounts: dict[str, Any]) -> None:
+    DATA_DIR.mkdir(exist_ok=True)
+    with ACCOUNTS_PATH.open("w", encoding="utf-8") as file:
+        json.dump(accounts, file, ensure_ascii=False, indent=2)
+
+
+def hash_password(password: str, salt: str) -> str:
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        bytes.fromhex(salt),
+        120_000,
+    )
+    return digest.hex()
+
+
+def create_account(username: str, password: str) -> tuple[bool, str]:
+    username = normalize_username(username)
+    if len(username) < 3:
+        return False, "用户名至少需要 3 个字符。"
+    if len(password) < 6:
+        return False, "密码至少需要 6 个字符。"
+
+    accounts = load_accounts()
+    if username in accounts:
+        return False, "这个用户名已经存在，请直接登录或换一个用户名。"
+
+    salt = secrets.token_hex(16)
+    accounts[username] = {
+        "salt": salt,
+        "password_hash": hash_password(password, salt),
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    save_accounts(accounts)
+    return True, username
+
+
+def authenticate(username: str, password: str) -> bool:
+    username = normalize_username(username)
+    account = load_accounts().get(username)
+    if not account:
+        return False
+
+    expected_hash = account.get("password_hash", "")
+    salt = account.get("salt", "")
+    if not expected_hash or not salt:
+        return False
+    return secrets.compare_digest(hash_password(password, salt), expected_hash)
+
+
+def render_auth_sidebar() -> str | None:
+    current_user = st.session_state.get("auth_user")
+    st.sidebar.title("账户")
+    if current_user:
+        st.sidebar.success(f"已登录：{current_user}")
+        if st.sidebar.button("退出登录", use_container_width=True):
+            st.session_state.pop("auth_user", None)
+            st.rerun()
+        return str(current_user)
+
+    mode = st.sidebar.radio("账户操作", ["登录", "创建账户"])
+    with st.sidebar.form("account_form"):
+        username = st.text_input("用户名", placeholder="例如：mario2026")
+        password = st.text_input("密码", type="password")
+        submitted = st.form_submit_button(mode, use_container_width=True)
+
+    if submitted:
+        username = normalize_username(username)
+        if mode == "创建账户":
+            ok, message = create_account(username, password)
+            if ok:
+                st.session_state["auth_user"] = message
+                st.rerun()
+            st.sidebar.error(message)
+        elif authenticate(username, password):
+            st.session_state["auth_user"] = username
+            st.rerun()
+        else:
+            st.sidebar.error("用户名或密码不正确。")
+
+    st.sidebar.info("创建账户后，你的收藏、生词本和学习进度会和密码绑定。")
+    return None
 
 
 def load_state(state_path: Path) -> dict[str, Any]:
@@ -619,16 +720,17 @@ def main() -> None:
     apply_theme()
     words = load_words()
 
-    st.sidebar.title("学习")
-    profile_name = st.sidebar.text_input(
-        "学习编号",
-        value=st.session_state.get("profile_name", "访客"),
-        help="互联网版本给每个使用者一个编号，用来分开保存收藏、生词本和学习进度。",
-    ).strip() or "访客"
-    st.session_state["profile_name"] = profile_name
-    state_path = state_path_for_profile(profile_name)
+    username = render_auth_sidebar()
+    if not username:
+        render_header()
+        st.info("请先在左侧登录或创建账户。登录后会自动读取你的收藏、生词本和学习进度。")
+        return
+
+    state_path = state_path_for_user(username)
     state = load_state(state_path)
-    state["profile_name"] = profile_name
+    state["username"] = username
+
+    st.sidebar.title("学习")
     page = st.sidebar.radio(
         "导航",
         ["首页", "章节学习", "闪卡模式", "生词本", "收藏夹", "搜索"],
@@ -636,7 +738,7 @@ def main() -> None:
     )
     st.sidebar.divider()
     st.sidebar.caption(f"词库：{WORDS_PATH.name}")
-    st.sidebar.caption(f"当前学习编号：{profile_name}")
+    st.sidebar.caption(f"当前账户：{username}")
     st.sidebar.caption(f"进度文件：{state_path.relative_to(BASE_DIR)}")
 
     if page == "首页":

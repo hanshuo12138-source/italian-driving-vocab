@@ -13,7 +13,7 @@ C:\Users\20767\Documents\Codex\2026-05-30\python-streamlit-1-2-3-4
 - pandas
 - CSV 本地词库
 - JSON 本地保存学习状态
-- 已加入“学习编号”，方便互联网版本按用户分开保存进度
+- 已加入轻量账户系统，方便互联网版本按用户分开保存进度
 
 ## 当前功能
 
@@ -24,8 +24,8 @@ C:\Users\20767\Documents\Codex\2026-05-30\python-streamlit-1-2-3-4
 - 搜索单词
 - 收藏功能
 - 数据来自 `words.csv`
-- 学习进度、收藏、生词本保存在 `data/user_state.json`
-- 现在学习进度、收藏、生词本按学习编号保存在 `data/users/*.json`
+- 用户可以创建账户并登录
+- 学习进度、收藏、生词本按账户保存在 `data/users/*.json`
 - 中文界面
 - 类 Busuu 的卡片式学习界面
 
@@ -35,8 +35,8 @@ C:\Users\20767\Documents\Codex\2026-05-30\python-streamlit-1-2-3-4
 - `words.csv`：词库
 - `requirements.txt`：依赖列表
 - `README.md`：运行说明
-- `data/user_state.json`：运行后自动生成，用来保存学习数据
-- `data/users/*.json`：运行后自动生成，用来按学习编号保存学习数据
+- `data/accounts.json`：运行后自动生成，用来保存账户哈希信息
+- `data/users/*.json`：运行后自动生成，用来按账户保存学习数据
 - `DEPLOYMENT.md`：互联网版本上线说明
 
 ## 启动方式
@@ -60,7 +60,7 @@ python -m streamlit run app.py
 8. 打包成 `.exe` 桌面程序。
 9. 优化手机端界面。
 10. 增加按考试主题分类的专项练习。
-11. 接入 Supabase、Google Sheets 或 PostgreSQL，让互联网版本稳定保存所有用户进度。
+11. 接入 Supabase、Google Sheets 或 PostgreSQL，让互联网版本稳定保存所有用户进度和账户。
 
 ## 下一次继续时可以这样说
 
