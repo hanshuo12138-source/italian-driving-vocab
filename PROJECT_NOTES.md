@@ -24,6 +24,7 @@ C:\Users\20767\Documents\Codex\2026-05-30\python-streamlit-1-2-3-4
 - 搜索单词
 - 收藏功能
 - 数据来自 `words.csv`
+- 词库支持 `image` 列，可显示交通标志/图形图片
 - 用户可以创建账户并登录
 - 登录时可以选择保持登录
 - 学习进度、收藏、生词本按账户保存在 `data/users/*.json`
@@ -34,6 +35,7 @@ C:\Users\20767\Documents\Codex\2026-05-30\python-streamlit-1-2-3-4
 
 - `app.py`：主程序
 - `words.csv`：词库
+- `tools/import_sign_definitions.py`：从 WEBpatente 图形定义文件整理交通标志/图形词条的辅助脚本
 - `requirements.txt`：依赖列表
 - `README.md`：运行说明
 - `data/accounts.json`：运行后自动生成，用来保存账户哈希信息
@@ -62,6 +64,7 @@ python -m streamlit run app.py
 9. 优化手机端界面。
 10. 增加按考试主题分类的专项练习。
 11. 接入 Supabase、Google Sheets 或 PostgreSQL，让互联网版本稳定保存所有用户进度和账户。
+12. 继续校对交通标志/图形的中文释义，让商业版词库更准确。
 
 ## 下一次继续时可以这样说
 

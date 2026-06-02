@@ -30,6 +30,12 @@ DEPLOYMENT.md
 .gitignore
 ```
 
+如果要保留词库整理脚本，也可以上传：
+
+```text
+tools/import_sign_definitions.py
+```
+
 不要上传：
 
 ```text
@@ -56,6 +62,8 @@ https://你的项目名.streamlit.app
 ## 以后词库怎么更新
 
 修改 `words.csv` 后，再上传到 GitHub。Streamlit Cloud 会重新部署，用户打开网页后就能看到新词库。
+
+`words.csv` 支持 `image` 列。交通标志/图形词条可以放图片链接，应用会在单词卡和闪卡中显示对应图片。
 
 ## 更正式的升级方向
 

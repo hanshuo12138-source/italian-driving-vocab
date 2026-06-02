@@ -5,5 +5,6 @@ venv/
 env/
 .streamlit/secrets.toml
 data/
+*_remote.js
 .DS_Store
 Thumbs.db

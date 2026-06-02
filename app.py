@@ -22,7 +22,7 @@ USERS_DIR = DATA_DIR / "users"
 ACCOUNTS_PATH = DATA_DIR / "accounts.json"
 
 REQUIRED_COLUMNS = {"chapter", "italian", "chinese"}
-OPTIONAL_COLUMNS = ["pronunciation", "example_it", "example_zh", "note"]
+OPTIONAL_COLUMNS = ["pronunciation", "example_it", "example_zh", "note", "image"]
 
 
 st.set_page_config(
@@ -353,6 +353,24 @@ def apply_theme() -> None:
             margin-bottom: 4px;
         }
 
+        .word-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 104px;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .sign-image {
+            width: 96px;
+            height: 96px;
+            object-fit: contain;
+            background: #ffffff;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: inset 0 0 0 1px rgba(22, 33, 31, 0.03);
+        }
+
         .word-translation {
             color: #2b3b38;
             font-size: 16px;
@@ -401,6 +419,17 @@ def apply_theme() -> None:
             line-height: 1.15;
             font-weight: 900;
             margin-bottom: 10px;
+        }
+
+        .flash-image {
+            width: 132px;
+            height: 132px;
+            object-fit: contain;
+            background: #ffffff;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 16px;
         }
 
         .flash-chinese {
@@ -476,6 +505,15 @@ def apply_theme() -> None:
 
             .flash-chinese {
                 font-size: 23px;
+            }
+
+            .word-layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .sign-image {
+                width: 88px;
+                height: 88px;
             }
         }
         </style>
@@ -843,16 +881,24 @@ def render_word_card(row: pd.Series, state: dict[str, Any], key_prefix: str) -> 
     note_html = ""
     if row["note"]:
         note_html = f'<div class="small-muted" style="margin-top:8px;">{h(row["note"])}</div>'
+    image_html = ""
+    if row.get("image", ""):
+        image_html = f'<img class="sign-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
 
     st.markdown(
         dedent(f"""
         <div class="word-card">
-            <div class="word-title">{h(row['italian'])}</div>
-            <div class="word-translation">{h(row['chinese'])}</div>
-            <div class="small-muted">{h(row['chapter'])}</div>
-            {example_html}
-            {note_html}
-            <div class="badge-line">{''.join(badges)}</div>
+            <div class="word-layout">
+                <div>
+                    <div class="word-title">{h(row['italian'])}</div>
+                    <div class="word-translation">{h(row['chinese'])}</div>
+                    <div class="small-muted">{h(row['chapter'])}</div>
+                    {example_html}
+                    {note_html}
+                    <div class="badge-line">{''.join(badges)}</div>
+                </div>
+                {image_html}
+            </div>
         </div>
         """),
         unsafe_allow_html=True,
@@ -961,11 +1007,15 @@ def render_flashcards(words: pd.DataFrame, state: dict[str, Any]) -> None:
         )
     else:
         answer_html = '<div class="small-muted">先在心里作答，再翻开答案</div>'
+    image_html = ""
+    if row.get("image", ""):
+        image_html = f'<img class="flash-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
 
     st.markdown(
         dedent(f"""
         <div class="flash-card">
             <div class="small-muted">{h(row['chapter'])} · {progress_text}</div>
+            {image_html}
             <div class="flash-word">{h(row['italian'])}</div>
             <div class="small-muted">{h(row['pronunciation'])}</div>
             {answer_html}

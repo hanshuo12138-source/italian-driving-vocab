@@ -23,6 +23,9 @@ streamlit run app.py
 - `example_it`：意大利语例句
 - `example_zh`：中文例句
 - `note`：备注
+- `image`：图片链接，交通标志/图形词条会用它显示图片
+
+当前词库已加入一批交通标志和图形词条，图片链接来自公开的 WEBpatente 图形资源。
 
 ## 本地数据
 
