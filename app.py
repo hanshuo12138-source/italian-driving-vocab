@@ -5,6 +5,7 @@ import json
 import hashlib
 import os
 import secrets
+import shutil
 from html import escape
 from datetime import datetime
 from pathlib import Path
@@ -14,9 +15,37 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
+from i18n import LANGUAGE_OPTIONS, t
+from db import (
+    DB_PATH,
+    create_user,
+    create_persistence_marker,
+    delete_persistence_marker,
+    get_analytics_summary,
+    get_due_review_word_ids,
+    get_persistence_markers,
+    get_user_role,
+    init_db,
+    log_app_event,
+    load_user_state,
+    record_flashcard_result,
+    record_review_result,
+    schedule_initial_review,
+    save_user_state,
+    set_user_role,
+    set_word_membership,
+    update_user_password,
+    user_exists,
+    verify_user_password,
+)
+
 
 BASE_DIR = Path(__file__).parent
 WORDS_PATH = BASE_DIR / "words.csv"
+ADS_PATH = BASE_DIR / "ads.json"
+DOCS_DIR = BASE_DIR / "docs"
+PRIVACY_POLICY_PATH = DOCS_DIR / "PRIVACY_POLICY.md"
+TERMS_OF_SERVICE_PATH = DOCS_DIR / "TERMS_OF_SERVICE.md"
 DATA_DIR = BASE_DIR / "data"
 STATE_PATH = DATA_DIR / "user_state.json"
 USERS_DIR = DATA_DIR / "users"
@@ -25,7 +54,29 @@ ADMIN_LOG_PATH = DATA_DIR / "admin_logs.jsonl"
 VALID_ROLES = {"user", "admin", "super_admin"}
 
 REQUIRED_COLUMNS = {"chapter", "italian", "chinese"}
-OPTIONAL_COLUMNS = ["pronunciation", "example_it", "example_zh", "note", "image"]
+OPTIONAL_COLUMNS = [
+    "pronunciation",
+    "example_it",
+    "example_zh",
+    "note",
+    "image",
+    "source_name",
+    "source_url",
+    "license_note",
+    "copyright_status",
+    "word_id",
+]
+ADMIN_WORDS_REQUIRED_COLUMNS = [
+    "chapter",
+    "italian",
+    "chinese",
+    "pronunciation",
+    "example_it",
+    "example_zh",
+    "note",
+    "image",
+    "word_id",
+]
 
 
 st.set_page_config(
@@ -525,7 +576,7 @@ def apply_theme() -> None:
     )
 
 
-def make_word_id(row: pd.Series) -> str:
+def make_legacy_word_id(row: pd.Series) -> str:
     return f"{row['chapter']}::{row['italian']}".strip().lower()
 
 
@@ -533,17 +584,51 @@ def h(value: Any) -> str:
     return escape(str(value), quote=True)
 
 
+def parse_date(value: Any) -> datetime.date | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text).date()
+    except ValueError:
+        return None
+
+
+def current_language() -> str:
+    language = str(st.session_state.get("language", "zh"))
+    return language if language in LANGUAGE_OPTIONS else "zh"
+
+
+def tr(key: str, **kwargs: Any) -> str:
+    text = t(key, current_language())
+    return text.format(**kwargs) if kwargs else text
+
+
+def render_language_selector() -> None:
+    st.session_state.setdefault("language", "zh")
+    labels = {code: label for code, label in LANGUAGE_OPTIONS.items()}
+    selected_label = st.sidebar.selectbox(
+        tr("language"),
+        list(labels.values()),
+        index=list(labels).index(current_language()),
+    )
+    for code, label in labels.items():
+        if label == selected_label:
+            st.session_state["language"] = code
+            break
+
+
 @st.cache_data(show_spinner=False)
 def load_words() -> pd.DataFrame:
     if not WORDS_PATH.exists():
-        st.error("没有找到 words.csv。请在项目根目录放入词库文件。")
+        st.error(tr("words_missing"))
         st.stop()
 
     words = pd.read_csv(WORDS_PATH).fillna("")
     words.columns = [column.strip() for column in words.columns]
     missing = REQUIRED_COLUMNS - set(words.columns)
     if missing:
-        st.error(f"words.csv 缺少列：{', '.join(sorted(missing))}")
+        st.error(tr("words_missing_columns", columns=", ".join(sorted(missing))))
         st.stop()
 
     for column in OPTIONAL_COLUMNS:
@@ -554,8 +639,96 @@ def load_words() -> pd.DataFrame:
     words["italian"] = words["italian"].astype(str).str.strip()
     words["chinese"] = words["chinese"].astype(str).str.strip()
     words = words[(words["chapter"] != "") & (words["italian"] != "")]
-    words["word_id"] = words.apply(make_word_id, axis=1)
+    words["legacy_word_id"] = words.apply(make_legacy_word_id, axis=1)
+    words["word_id"] = words["word_id"].astype(str).str.strip()
+    missing_word_id = words["word_id"] == ""
+    words.loc[missing_word_id, "word_id"] = words.loc[missing_word_id, "legacy_word_id"]
     return words.reset_index(drop=True)
+
+
+@st.cache_data(show_spinner=False)
+def load_ads() -> list[dict[str, Any]]:
+    if not ADS_PATH.exists():
+        return []
+
+    try:
+        with ADS_PATH.open("r", encoding="utf-8") as file:
+            ads = json.load(file)
+    except (json.JSONDecodeError, OSError):
+        return []
+
+    if not isinstance(ads, list):
+        return []
+    return [ad for ad in ads if isinstance(ad, dict)]
+
+
+def ad_is_active(ad: dict[str, Any]) -> bool:
+    if ad.get("active") is not True:
+        return False
+
+    today = datetime.now().date()
+    start_date = parse_date(ad.get("start_date"))
+    end_date = parse_date(ad.get("end_date"))
+    if start_date and today < start_date:
+        return False
+    if end_date and today > end_date:
+        return False
+    return True
+
+
+def active_ads_for_slot(slot_name: str) -> list[dict[str, Any]]:
+    return [
+        ad for ad in load_ads()
+        if str(ad.get("slot", "")).strip() == slot_name and ad_is_active(ad)
+    ]
+
+
+def show_ad(slot_name: str) -> None:
+    ads = active_ads_for_slot(slot_name)
+    if not ads:
+        return
+
+    ad = ads[0]
+    ad_id = str(ad.get("id", "")).strip()
+    title = str(ad.get("title", "")).strip()
+    description = str(ad.get("description", "")).strip()
+    image = str(ad.get("image", "")).strip()
+    link = str(ad.get("link", "")).strip()
+    category = str(ad.get("category", "")).strip()
+    username = str(st.session_state.get("auth_user", "")) or None
+
+    view_key = f"ad_view::{slot_name}::{ad_id}"
+    if ad_id and not st.session_state.get(view_key):
+        safe_log_event(
+            "ad_view",
+            username=username,
+            detail={"slot": slot_name, "ad_id": ad_id, "category": category},
+        )
+        st.session_state[view_key] = True
+
+    with st.container():
+        st.markdown(
+            dedent(f"""
+            <div class="word-card" style="padding:14px;margin-top:14px;">
+                <div class="small-muted">{h(tr("ad_label"))}</div>
+                <div class="word-title" style="font-size:18px;">{h(title)}</div>
+                <div class="small-muted">{h(description)}</div>
+            </div>
+            """),
+            unsafe_allow_html=True,
+        )
+        if image:
+            st.image(image, use_container_width=True)
+        if link:
+            if st.button(tr("ad_more"), key=f"ad-click-{slot_name}-{ad_id}", use_container_width=True):
+                safe_log_event(
+                    "ad_click",
+                    username=username,
+                    detail={"slot": slot_name, "ad_id": ad_id, "category": category},
+                )
+                st.session_state[f"ad_link_ready::{slot_name}::{ad_id}"] = True
+            if st.session_state.get(f"ad_link_ready::{slot_name}::{ad_id}"):
+                st.link_button(tr("ad_open_link"), link, use_container_width=True)
 
 
 def default_state() -> dict[str, Any]:
@@ -563,6 +736,7 @@ def default_state() -> dict[str, Any]:
         "favorites": [],
         "difficult": [],
         "learned": [],
+        "wrong": [],
         "stats": {},
     }
 
@@ -609,9 +783,7 @@ def account_role(username: str) -> str:
     if username and username == configured_admin_username():
         return "super_admin"
 
-    account = load_accounts().get(username, {})
-    role = str(account.get("role", "user"))
-    return role if role in VALID_ROLES else "user"
+    return get_user_role(username)
 
 
 def set_configured_admin_role(username: str) -> None:
@@ -619,13 +791,8 @@ def set_configured_admin_role(username: str) -> None:
     if not username or username != configured_admin_username():
         return
 
-    accounts = load_accounts()
-    account = accounts.get(username)
-    if not account:
-        return
-    if account.get("role") != "super_admin":
-        account["role"] = "super_admin"
-        save_accounts(accounts)
+    if user_exists(username) and get_user_role(username) != "super_admin":
+        set_user_role(username, "super_admin")
 
 
 def is_admin(username: str) -> bool:
@@ -639,7 +806,7 @@ def current_user_is_admin() -> bool:
 def require_admin() -> str:
     username = str(st.session_state.get("auth_user", ""))
     if not is_admin(username):
-        st.error("无权限：此操作仅限管理员。")
+        st.error(tr("admin_denied"))
         st.stop()
     return normalize_username(username)
 
@@ -655,6 +822,17 @@ def log_admin_action(username: str, action: str, detail: str) -> None:
     }
     with ADMIN_LOG_PATH.open("a", encoding="utf-8") as file:
         file.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def safe_log_event(
+    event_type: str,
+    username: str | None = None,
+    detail: dict[str, Any] | None = None,
+) -> None:
+    try:
+        log_app_event(event_type, username=username, detail=detail)
+    except Exception:
+        return
 
 
 def hash_password(password: str, salt: str) -> str:
@@ -676,7 +854,10 @@ def save_remember_token(username: str) -> str:
     accounts = load_accounts()
     account = accounts.get(username)
     if not account:
-        return ""
+        if not user_exists(username):
+            return ""
+        account = {"remember_tokens": []}
+        accounts[username] = account
 
     token = secrets.token_urlsafe(32)
     tokens = account.setdefault("remember_tokens", [])
@@ -708,6 +889,20 @@ def revoke_remember_token(username: str, token: str) -> None:
     save_accounts(accounts)
 
 
+def revoke_all_remember_tokens(username: str) -> None:
+    username = normalize_username(username)
+    if not username:
+        return
+
+    accounts = load_accounts()
+    account = accounts.get(username)
+    if not account:
+        return
+
+    account["remember_tokens"] = []
+    save_accounts(accounts)
+
+
 def authenticate_remember_token(username: str, token: str) -> bool:
     username = normalize_username(username)
     account = load_accounts().get(username)
@@ -724,40 +919,27 @@ def authenticate_remember_token(username: str, token: str) -> bool:
 def create_account(username: str, password: str) -> tuple[bool, str]:
     username = normalize_username(username)
     if len(username) < 3:
-        return False, "用户名至少需要 3 个字符。"
+        return False, tr("username_too_short")
     if len(password) < 6:
-        return False, "密码至少需要 6 个字符。"
+        return False, tr("password_too_short")
     if username == configured_admin_username():
-        return False, "此用户名已保留，请使用其他用户名。"
+        return False, tr("reserved_username")
 
-    accounts = load_accounts()
-    if username in accounts:
-        return False, "这个用户名已经存在，请直接登录或换一个用户名。"
+    if user_exists(username):
+        return False, tr("username_exists")
 
-    salt = secrets.token_hex(16)
-    accounts[username] = {
-        "salt": salt,
-        "password_hash": hash_password(password, salt),
-        "created_at": datetime.now().isoformat(timespec="seconds"),
-        "role": "user",
-    }
-    save_accounts(accounts)
-    return True, username
+    if create_user(username, password, role="user"):
+        safe_log_event("user_register", username=username)
+        return True, username
+    return False, tr("username_exists")
 
 
 def authenticate(username: str, password: str) -> bool:
     username = normalize_username(username)
-    account = load_accounts().get(username)
-    if not account:
-        return False
-
-    expected_hash = account.get("password_hash", "")
-    salt = account.get("salt", "")
-    if not expected_hash or not salt:
-        return False
-    ok = secrets.compare_digest(hash_password(password, salt), expected_hash)
+    ok = verify_user_password(username, password)
     if ok:
         set_configured_admin_role(username)
+        safe_log_event("user_login", username=username)
     return ok
 
 
@@ -778,41 +960,115 @@ def restore_login_from_query() -> None:
         username = normalize_username(username)
         set_configured_admin_role(username)
         st.session_state["auth_user"] = username
+        safe_log_event("user_login", username=username, detail={"method": "remember"})
+
+
+def render_legal_document(document: str) -> None:
+    docs = {
+        "privacy": PRIVACY_POLICY_PATH,
+        "terms": TERMS_OF_SERVICE_PATH,
+    }
+    path = docs.get(document)
+    if not path or not path.exists():
+        st.warning(tr("legal_doc_missing"))
+        return
+    st.markdown(path.read_text(encoding="utf-8"))
+
+
+def render_public_legal_links() -> None:
+    st.sidebar.divider()
+    st.sidebar.caption(tr("legal_documents"))
+    if st.sidebar.button(tr("privacy_policy"), key="public_privacy_policy", use_container_width=True):
+        st.session_state["public_legal_page"] = "privacy"
+    if st.sidebar.button(tr("terms_of_service"), key="public_terms_of_service", use_container_width=True):
+        st.session_state["public_legal_page"] = "terms"
+
+
+def render_change_password_form(username: str) -> None:
+    with st.sidebar.expander(tr("change_password")):
+        with st.form("change_password_form"):
+            current_password = st.text_input(tr("current_password"), type="password")
+            new_password = st.text_input(tr("new_password"), type="password")
+            confirm_new_password = st.text_input(tr("confirm_new_password"), type="password")
+            submitted = st.form_submit_button(tr("change_password_submit"), use_container_width=True)
+
+        if not submitted:
+            return
+
+        if len(new_password) < 8:
+            st.error(tr("new_password_too_short"))
+            return
+        if new_password != confirm_new_password:
+            st.error(tr("new_password_mismatch"))
+            return
+
+        ok, reason = update_user_password(username, current_password, new_password)
+        if ok:
+            revoke_all_remember_tokens(username)
+            safe_log_event(
+                "password_changed",
+                username=username,
+                detail={"remember_tokens_cleared": True},
+            )
+            st.session_state["password_changed_notice"] = True
+            st.query_params.clear()
+            st.session_state.pop("auth_user", None)
+            st.rerun()
+
+        if reason == "same_password":
+            st.error(tr("new_password_same"))
+        elif reason == "invalid_current_password":
+            st.error(tr("current_password_invalid"))
+        else:
+            st.error(tr("password_change_failed"))
 
 
 def render_auth_sidebar() -> str | None:
     restore_login_from_query()
     current_user = st.session_state.get("auth_user")
-    st.sidebar.title("账户")
+    st.sidebar.title(tr("account"))
     if current_user:
-        st.sidebar.success(f"已登录：{current_user}")
-        if st.sidebar.button("退出登录", use_container_width=True):
+        st.sidebar.success(tr("logged_in_as", username=current_user))
+        render_change_password_form(str(current_user))
+        if st.sidebar.button(tr("logout"), use_container_width=True):
             revoke_remember_token(str(current_user), query_param_value("remember"))
             st.query_params.clear()
             st.session_state.pop("auth_user", None)
             st.rerun()
         return str(current_user)
 
-    mode = st.sidebar.radio("账户操作", ["登录", "创建账户"])
+    auth_modes = {
+        tr("login"): "login",
+        tr("create_account"): "create_account",
+    }
+    if st.session_state.pop("password_changed_notice", False):
+        st.sidebar.success(tr("password_change_success_relogin"))
+    mode_label = st.sidebar.radio(tr("account_action"), list(auth_modes))
     with st.sidebar.form("account_form"):
-        username = st.text_input("用户名", placeholder="例如：mario2026")
-        password = st.text_input("密码", type="password")
-        remember_me = st.checkbox("保持登录", value=True)
-        submitted = st.form_submit_button(mode, use_container_width=True)
+        username = st.text_input(tr("username"), placeholder=tr("username_placeholder"))
+        password = st.text_input(tr("password"), type="password")
+        remember_me = st.checkbox(tr("remember_me"), value=True)
+        terms_agreed = True
+        if auth_modes[mode_label] == "create_account":
+            terms_agreed = st.checkbox(tr("accept_terms_privacy"))
+        submitted = st.form_submit_button(mode_label, use_container_width=True)
 
     if submitted:
         username = normalize_username(username)
-        if mode == "创建账户":
-            ok, message = create_account(username, password)
-            if ok:
-                st.session_state["auth_user"] = message
-                if remember_me:
-                    token = save_remember_token(message)
-                    if token:
-                        st.query_params["user"] = message
-                        st.query_params["remember"] = token
-                st.rerun()
-            st.sidebar.error(message)
+        if auth_modes[mode_label] == "create_account":
+            if not terms_agreed:
+                st.sidebar.error(tr("terms_required"))
+            else:
+                ok, message = create_account(username, password)
+                if ok:
+                    st.session_state["auth_user"] = message
+                    if remember_me:
+                        token = save_remember_token(message)
+                        if token:
+                            st.query_params["user"] = message
+                            st.query_params["remember"] = token
+                    st.rerun()
+                st.sidebar.error(message)
         elif authenticate(username, password):
             st.session_state["auth_user"] = username
             if remember_me:
@@ -824,79 +1080,142 @@ def render_auth_sidebar() -> str | None:
                 st.query_params.clear()
             st.rerun()
         else:
-            st.sidebar.error("用户名或密码不正确。")
+            st.sidebar.error(tr("login_failed"))
 
-    st.sidebar.info("保持登录适合自己的手机或电脑。不要把带 remember 参数的网址发给别人。")
+    st.sidebar.info(tr("remember_tip"))
+    render_public_legal_links()
     return None
 
 
-def load_state(state_path: Path) -> dict[str, Any]:
-    DATA_DIR.mkdir(exist_ok=True)
-    USERS_DIR.mkdir(exist_ok=True)
-    if not state_path.exists():
-        state = default_state()
-        state["_state_path"] = str(state_path)
-        return state
-
-    try:
-        with state_path.open("r", encoding="utf-8") as file:
-            state = json.load(file)
-    except (json.JSONDecodeError, OSError):
-        state = default_state()
-        state["_state_path"] = str(state_path)
-        return state
-
+def load_state(username: str, state_path: Path) -> dict[str, Any]:
+    state = load_user_state(username, legacy_state_path=state_path)
     merged = default_state()
     merged.update({key: state.get(key, value) for key, value in merged.items()})
     merged["_state_path"] = str(state_path)
+    merged["username"] = normalize_username(username)
     return merged
 
 
 def save_state(state: dict[str, Any]) -> None:
-    DATA_DIR.mkdir(exist_ok=True)
-    USERS_DIR.mkdir(exist_ok=True)
-    state_path = Path(state.get("_state_path", STATE_PATH))
-    public_state = {key: value for key, value in state.items() if not key.startswith("_")}
-    with state_path.open("w", encoding="utf-8") as file:
-        json.dump(public_state, file, ensure_ascii=False, indent=2)
+    username = normalize_username(str(state.get("username", "")))
+    if username:
+        save_user_state(username, state)
 
 
 def state_set(state: dict[str, Any], key: str) -> set[str]:
     return set(state.get(key, []))
 
 
+def legacy_word_id_maps(words: pd.DataFrame) -> tuple[dict[str, str], dict[str, str]]:
+    legacy_to_stable: dict[str, str] = {}
+    stable_to_legacy: dict[str, str] = {}
+    if "legacy_word_id" not in words.columns:
+        return legacy_to_stable, stable_to_legacy
+
+    for _, row in words.iterrows():
+        legacy_id = str(row.get("legacy_word_id", "")).strip()
+        stable_id = str(row.get("word_id", "")).strip()
+        if legacy_id and stable_id and legacy_id != stable_id:
+            legacy_to_stable[legacy_id] = stable_id
+            stable_to_legacy[stable_id] = legacy_id
+    return legacy_to_stable, stable_to_legacy
+
+
+def apply_legacy_word_id_compatibility(state: dict[str, Any], words: pd.DataFrame) -> dict[str, Any]:
+    legacy_to_stable, stable_to_legacy = legacy_word_id_maps(words)
+    if not legacy_to_stable:
+        state["_word_id_to_legacy"] = {}
+        return state
+
+    for key in ["favorites", "difficult", "learned", "wrong"]:
+        values = state_set(state, key)
+        for legacy_id, stable_id in legacy_to_stable.items():
+            if legacy_id in values:
+                values.add(stable_id)
+        state[key] = sorted(values)
+
+    stats = state.get("stats", {})
+    if isinstance(stats, dict):
+        for legacy_id, stable_id in legacy_to_stable.items():
+            if legacy_id in stats and stable_id not in stats:
+                stats[stable_id] = stats[legacy_id]
+        state["stats"] = stats
+
+    state["_word_id_to_legacy"] = stable_to_legacy
+    return state
+
+
+def map_legacy_ids_to_stable(ids: list[str], words: pd.DataFrame) -> list[str]:
+    legacy_to_stable, _ = legacy_word_id_maps(words)
+    mapped = []
+    for word_id in ids:
+        mapped.append(legacy_to_stable.get(word_id, word_id))
+    return sorted(set(mapped))
+
+
 def set_membership(state: dict[str, Any], key: str, word_id: str, enabled: bool) -> None:
     values = state_set(state, key)
+    related_ids = {word_id}
+    legacy_id = dict(state.get("_word_id_to_legacy", {})).get(word_id)
+    if legacy_id:
+        related_ids.add(legacy_id)
+    was_enabled = any(item in values for item in related_ids)
     if enabled:
-        values.add(word_id)
+        values.update(related_ids)
     else:
-        values.discard(word_id)
+        for item in related_ids:
+            values.discard(item)
     state[key] = sorted(values)
-    save_state(state)
+    for item in related_ids:
+        set_word_membership(str(state.get("username", "")), key, item, enabled)
+    if key in {"difficult", "wrong"} and enabled and not was_enabled:
+        for item in related_ids:
+            schedule_initial_review(str(state.get("username", "")), item)
+    event_type = ""
+    if key == "favorites":
+        event_type = "favorite_add" if enabled else "favorite_remove"
+    elif key == "difficult":
+        event_type = "unknown_add" if enabled else "unknown_remove"
+    if event_type and was_enabled != enabled:
+        safe_log_event(
+            event_type,
+            username=str(state.get("username", "")),
+            detail={"word_id": word_id},
+        )
 
 
-def mark_seen(state: dict[str, Any], word_id: str, result: str) -> None:
+def mark_seen(
+    state: dict[str, Any],
+    word_id: str,
+    result: str,
+    italian: str = "",
+) -> None:
     stats = state.setdefault("stats", {})
     item = stats.setdefault(word_id, {"seen": 0, "known": 0, "unknown": 0, "last_seen": ""})
     item["seen"] = int(item.get("seen", 0)) + 1
     if result == "known":
         item["known"] = int(item.get("known", 0)) + 1
         set_membership(state, "learned", word_id, True)
-        set_membership(state, "difficult", word_id, False)
     elif result == "unknown":
         item["unknown"] = int(item.get("unknown", 0)) + 1
-        set_membership(state, "difficult", word_id, True)
+        set_membership(state, "wrong", word_id, True)
     item["last_seen"] = datetime.now().isoformat(timespec="seconds")
-    save_state(state)
+    record_flashcard_result(str(state.get("username", "")), word_id, result)
+    if result in {"known", "unknown"}:
+        safe_log_event(
+            f"flashcard_{result}",
+            username=str(state.get("username", "")),
+            detail={"word_id": word_id, "italian": italian},
+        )
 
 
 def render_header() -> None:
     st.markdown(
-        dedent("""
+        dedent(f"""
         <div class="hero-panel">
             <div class="hero-kicker">Patente B · Teoria</div>
-            <div class="app-title">意大利驾照理论词汇</div>
-            <div class="app-subtitle">从道路标志、行驶规则到安全风险，把考试高频词汇整理成可复习的个人词库。</div>
+            <div class="app-title">{h(tr("hero_title"))}</div>
+            <div class="app-subtitle">{h(tr("hero_subtitle"))}</div>
         </div>
         """),
         unsafe_allow_html=True,
@@ -914,24 +1233,24 @@ def render_metrics(words: pd.DataFrame, state: dict[str, Any]) -> None:
         dedent(f"""
         <div class="metric-row">
             <div class="metric-card">
-                <div class="metric-label">词汇总数</div>
+                <div class="metric-label">{h(tr("total_words"))}</div>
                 <div class="metric-value">{total}</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">已掌握</div>
+                <div class="metric-label">{h(tr("learned"))}</div>
                 <div class="metric-value">{len(learned)}</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">生词本</div>
+                <div class="metric-label">{h(tr("difficult_words"))}</div>
                 <div class="metric-value">{len(difficult)}</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">收藏</div>
+                <div class="metric-label">{h(tr("favorite"))}</div>
                 <div class="metric-value">{len(favorites)}</div>
             </div>
         </div>
         <div class="progress-track"><div class="progress-fill" style="width:{progress}%"></div></div>
-        <div class="small-muted">总体掌握进度 {progress}%</div>
+        <div class="small-muted">{h(tr("overall_progress", progress=progress))}</div>
         """),
         unsafe_allow_html=True,
     )
@@ -944,11 +1263,11 @@ def render_word_card(row: pd.Series, state: dict[str, Any], key_prefix: str) -> 
     learned = state_set(state, "learned")
     badges = []
     if word_id in learned:
-        badges.append('<span class="badge">已掌握</span>')
+        badges.append(f'<span class="badge">{h(tr("badge_learned"))}</span>')
     if word_id in difficult:
-        badges.append('<span class="badge">生词</span>')
+        badges.append(f'<span class="badge">{h(tr("badge_difficult"))}</span>')
     if word_id in favorites:
-        badges.append('<span class="badge">收藏</span>')
+        badges.append(f'<span class="badge">{h(tr("badge_favorite"))}</span>')
     example_html = ""
     if row["example_it"] or row["example_zh"]:
         example_html = f'<div class="example">{h(row["example_it"])}<br>{h(row["example_zh"])}</div>'
@@ -980,17 +1299,17 @@ def render_word_card(row: pd.Series, state: dict[str, Any], key_prefix: str) -> 
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        label = "取消收藏" if word_id in favorites else "收藏"
+        label = tr("unfavorite") if word_id in favorites else tr("favorite")
         if st.button(label, key=f"{key_prefix}-fav-{word_id}", use_container_width=True):
             set_membership(state, "favorites", word_id, word_id not in favorites)
             st.rerun()
     with col2:
-        label = "移出生词本" if word_id in difficult else "加入生词本"
+        label = tr("remove_difficult") if word_id in difficult else tr("add_difficult")
         if st.button(label, key=f"{key_prefix}-diff-{word_id}", use_container_width=True):
             set_membership(state, "difficult", word_id, word_id not in difficult)
             st.rerun()
     with col3:
-        label = "标记未掌握" if word_id in learned else "标记掌握"
+        label = tr("mark_unlearned") if word_id in learned else tr("mark_learned")
         if st.button(label, key=f"{key_prefix}-learn-{word_id}", use_container_width=True):
             set_membership(state, "learned", word_id, word_id not in learned)
             if word_id not in learned:
@@ -1000,8 +1319,9 @@ def render_word_card(row: pd.Series, state: dict[str, Any], key_prefix: str) -> 
 
 def render_home(words: pd.DataFrame, state: dict[str, Any]) -> None:
     render_header()
+    show_ad("home_top")
     render_metrics(words, state)
-    st.markdown('<div class="section-title">章节</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-title">{h(tr("chapters"))}</div>', unsafe_allow_html=True)
 
     learned = state_set(state, "learned")
     chapter_html = ['<div class="chapter-grid">']
@@ -1015,11 +1335,11 @@ def render_home(words: pd.DataFrame, state: dict[str, Any]) -> None:
             <div class="chapter-card">
                 <div class="chapter-topline">
                     <div class="chapter-name">{h(chapter)}</div>
-                    <span class="pill">{total} 词</span>
+                    <span class="pill">{h(tr("words_count", count=total))}</span>
                 </div>
                 <div class="small-muted">{h(sample)}</div>
                 <div class="progress-track"><div class="progress-fill" style="width:{progress}%"></div></div>
-                <div class="small-muted">已掌握 {learned_count}/{total}</div>
+                <div class="small-muted">{h(tr("learned_count", learned=learned_count, total=total))}</div>
             </div>
             """)
         )
@@ -1028,11 +1348,19 @@ def render_home(words: pd.DataFrame, state: dict[str, Any]) -> None:
 
 
 def render_chapter(words: pd.DataFrame, state: dict[str, Any]) -> None:
-    st.header("章节学习")
+    st.header(tr("chapter_learning"))
     chapters = list(words["chapter"].drop_duplicates())
-    selected = st.selectbox("选择章节", chapters)
+    selected = st.selectbox(tr("select_chapter"), chapters)
+    chapter_log_key = f"chapter_view::{state.get('username', '')}"
+    if st.session_state.get(chapter_log_key) != selected:
+        safe_log_event(
+            "chapter_view",
+            username=str(state.get("username", "")),
+            detail={"chapter": selected},
+        )
+        st.session_state[chapter_log_key] = selected
     chapter_words = words[words["chapter"] == selected]
-    st.caption(f"{selected} · {len(chapter_words)} 个词")
+    st.caption(tr("items_count", title=selected, count=len(chapter_words)))
 
     for _, row in chapter_words.iterrows():
         render_word_card(row, state, "chapter")
@@ -1042,6 +1370,8 @@ def get_flash_pool(words: pd.DataFrame, state: dict[str, Any], chapter: str, sou
     pool = words if chapter == "全部章节" else words[words["chapter"] == chapter]
     if source == "只看生词":
         pool = pool[pool["word_id"].isin(state_set(state, "difficult"))]
+    elif source == "只看错词":
+        pool = pool[pool["word_id"].isin(state_set(state, "wrong"))]
     elif source == "只看收藏":
         pool = pool[pool["word_id"].isin(state_set(state, "favorites"))]
     elif source == "未掌握优先":
@@ -1052,17 +1382,37 @@ def get_flash_pool(words: pd.DataFrame, state: dict[str, Any], chapter: str, sou
 
 
 def render_flashcards(words: pd.DataFrame, state: dict[str, Any]) -> None:
-    st.header("闪卡模式")
+    st.header(tr("flashcards"))
     col1, col2 = st.columns([2, 1])
     with col1:
-        chapter = st.selectbox("练习范围", ["全部章节", *list(words["chapter"].drop_duplicates())])
+        all_chapters_label = tr("all_chapters")
+        chapter_label = st.selectbox(tr("practice_range"), [all_chapters_label, *list(words["chapter"].drop_duplicates())])
+        chapter = "全部章节" if chapter_label == all_chapters_label else chapter_label
     with col2:
-        source = st.selectbox("词卡来源", ["未掌握优先", "全部单词", "只看生词", "只看收藏"])
+        source_options = {
+            tr("unlearned_first"): "未掌握优先",
+            tr("all_words"): "全部单词",
+            tr("only_difficult"): "只看生词",
+            tr("only_wrong"): "只看错词",
+            tr("only_favorites"): "只看收藏",
+        }
+        source_label = st.selectbox(tr("card_source"), list(source_options))
+        source = source_options[source_label]
 
     pool = get_flash_pool(words, state, chapter, source)
     if pool.empty:
-        st.warning("这个范围里暂时没有词。可以先去章节里加入生词或收藏。")
+        st.warning(tr("empty_flash_pool"))
         return
+
+    flash_log_key = f"flashcard_start::{state.get('username', '')}"
+    flash_signature = f"{chapter}::{source}"
+    if st.session_state.get(flash_log_key) != flash_signature:
+        safe_log_event(
+            "flashcard_start",
+            username=str(state.get("username", "")),
+            detail={"chapter": chapter, "source": source, "pool_size": int(len(pool))},
+        )
+        st.session_state[flash_log_key] = flash_signature
 
     session_key = f"flash_index::{chapter}::{source}"
     reveal_key = f"flash_reveal::{chapter}::{source}"
@@ -1080,7 +1430,7 @@ def render_flashcards(words: pd.DataFrame, state: dict[str, Any]) -> None:
             f'<div class="example">{h(row["example_it"])}<br>{h(row["example_zh"])}</div>'
         )
     else:
-        answer_html = '<div class="small-muted">先在心里作答，再翻开答案</div>'
+        answer_html = f'<div class="small-muted">{h(tr("answer_hint"))}</div>'
     image_html = ""
     if row.get("image", ""):
         image_html = f'<img class="flash-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
@@ -1100,46 +1450,218 @@ def render_flashcards(words: pd.DataFrame, state: dict[str, Any]) -> None:
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        if st.button("显示答案", type="primary", use_container_width=True):
+        if st.button(tr("show_answer"), type="primary", use_container_width=True):
             st.session_state[reveal_key] = True
             st.rerun()
     with col2:
-        if st.button("认识", use_container_width=True):
-            mark_seen(state, row["word_id"], "known")
+        if st.button(tr("known"), use_container_width=True):
+            mark_seen(state, row["word_id"], "known", italian=str(row["italian"]))
             st.session_state[session_key] = (index + 1) % len(pool)
             st.session_state[reveal_key] = False
             st.rerun()
     with col3:
-        if st.button("不熟", use_container_width=True):
-            mark_seen(state, row["word_id"], "unknown")
+        if st.button(tr("unknown"), use_container_width=True):
+            mark_seen(state, row["word_id"], "unknown", italian=str(row["italian"]))
             st.session_state[session_key] = (index + 1) % len(pool)
             st.session_state[reveal_key] = False
             st.rerun()
     with col4:
-        if st.button("下一张", use_container_width=True):
+        if st.button(tr("next_card"), use_container_width=True):
             st.session_state[session_key] = (index + 1) % len(pool)
+            st.session_state[reveal_key] = False
+            st.rerun()
+
+    show_ad("flashcard_bottom")
+
+
+def render_today_review(words: pd.DataFrame, state: dict[str, Any]) -> None:
+    st.header(tr("today_review"))
+    username = str(state.get("username", ""))
+    due_ids = map_legacy_ids_to_stable(get_due_review_word_ids(username), words)
+    due_words = words[words["word_id"].isin(due_ids)].reset_index(drop=True)
+
+    if due_words.empty:
+        st.info(tr("no_due_reviews"))
+        return
+
+    st.caption(tr("due_review_count", count=len(due_words)))
+    review_key = "today_review_index"
+    reveal_key = "today_review_reveal"
+    st.session_state.setdefault(review_key, 0)
+    st.session_state.setdefault(reveal_key, False)
+    if st.session_state[review_key] >= len(due_words):
+        st.session_state[review_key] = 0
+
+    index = st.session_state[review_key]
+    row = due_words.iloc[index]
+    if st.session_state[reveal_key]:
+        answer_html = (
+            f'<div class="flash-chinese">{h(row["chinese"])}</div>'
+            f'<div class="example">{h(row["example_it"])}<br>{h(row["example_zh"])}</div>'
+        )
+    else:
+        answer_html = f'<div class="small-muted">{h(tr("answer_hint"))}</div>'
+    image_html = ""
+    if row.get("image", ""):
+        image_html = f'<img class="flash-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
+
+    st.markdown(
+        dedent(f"""
+        <div class="flash-card">
+            <div class="small-muted">{h(row['chapter'])} · {h(tr("review_progress", current=index + 1, total=len(due_words)))}</div>
+            {image_html}
+            <div class="flash-word">{h(row['italian'])}</div>
+            <div class="small-muted">{h(row['pronunciation'])}</div>
+            {answer_html}
+        </div>
+        """),
+        unsafe_allow_html=True,
+    )
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button(tr("show_answer"), key="today-review-show", type="primary", use_container_width=True):
+            st.session_state[reveal_key] = True
+            st.rerun()
+    with col2:
+        if st.button(tr("known"), key="today-review-known", use_container_width=True):
+            record_review_result(username, row["word_id"], "known")
+            record_flashcard_result(username, row["word_id"], "known")
+            safe_log_event(
+                "review_known",
+                username=username,
+                detail={"word_id": row["word_id"], "italian": str(row["italian"])},
+            )
+            st.session_state[reveal_key] = False
+            st.rerun()
+    with col3:
+        if st.button(tr("unknown"), key="today-review-unknown", use_container_width=True):
+            record_review_result(username, row["word_id"], "unknown")
+            record_flashcard_result(username, row["word_id"], "unknown")
+            safe_log_event(
+                "review_unknown",
+                username=username,
+                detail={"word_id": row["word_id"], "italian": str(row["italian"])},
+            )
             st.session_state[reveal_key] = False
             st.rerun()
 
 
 def render_collection(words: pd.DataFrame, state: dict[str, Any], kind: str) -> None:
-    title = "生词本" if kind == "difficult" else "收藏夹"
+    title = tr("difficult_words") if kind == "difficult" else tr("favorites")
     st.header(title)
     ids = state_set(state, kind)
     items = words[words["word_id"].isin(ids)]
     if items.empty:
-        st.info(f"{title} 还是空的。")
+        st.info(tr("empty_collection", title=title))
         return
 
     for _, row in items.iterrows():
         render_word_card(row, state, kind)
 
 
+def render_wrong_review(review_words: pd.DataFrame, state: dict[str, Any]) -> None:
+    st.subheader(tr("wrong_review"))
+    if review_words.empty:
+        st.info(tr("wrong_words_empty"))
+        return
+
+    review_key = "wrong_review_index"
+    reveal_key = "wrong_review_reveal"
+    st.session_state.setdefault(review_key, 0)
+    st.session_state.setdefault(reveal_key, False)
+    if st.session_state[review_key] >= len(review_words):
+        st.info(tr("wrong_review_done"))
+        st.session_state[review_key] = 0
+        st.session_state[reveal_key] = False
+        return
+
+    index = st.session_state[review_key]
+    row = review_words.iloc[index]
+    answer_html = (
+        f'<div class="flash-chinese">{h(row["chinese"])}</div>'
+        f'<div class="example">{h(row["example_it"])}<br>{h(row["example_zh"])}</div>'
+        if st.session_state[reveal_key]
+        else f'<div class="small-muted">{h(tr("answer_hint"))}</div>'
+    )
+    image_html = ""
+    if row.get("image", ""):
+        image_html = f'<img class="flash-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
+
+    st.markdown(
+        dedent(f"""
+        <div class="flash-card">
+            <div class="small-muted">{h(row['chapter'])} · {index + 1}/{len(review_words)}</div>
+            {image_html}
+            <div class="flash-word">{h(row['italian'])}</div>
+            <div class="small-muted">{h(row['pronunciation'])}</div>
+            {answer_html}
+        </div>
+        """),
+        unsafe_allow_html=True,
+    )
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        if st.button(tr("show_answer"), key="wrong-review-show", type="primary", use_container_width=True):
+            st.session_state[reveal_key] = True
+            st.rerun()
+    with col2:
+        if st.button(tr("known"), key="wrong-review-known", use_container_width=True):
+            mark_seen(state, row["word_id"], "known", italian=str(row["italian"]))
+            st.session_state[review_key] += 1
+            st.session_state[reveal_key] = False
+            st.rerun()
+    with col3:
+        if st.button(tr("unknown"), key="wrong-review-unknown", use_container_width=True):
+            mark_seen(state, row["word_id"], "unknown", italian=str(row["italian"]))
+            st.session_state[review_key] += 1
+            st.session_state[reveal_key] = False
+            st.rerun()
+    with col4:
+        if st.button(tr("remove_wrong"), key="wrong-review-remove", use_container_width=True):
+            set_membership(state, "wrong", row["word_id"], False)
+            st.session_state[review_key] += 1
+            st.session_state[reveal_key] = False
+            st.rerun()
+
+
+def render_wrong_words(words: pd.DataFrame, state: dict[str, Any]) -> None:
+    st.header(tr("wrong_words"))
+    wrong_ids = state_set(state, "wrong")
+    wrong_words = words[words["word_id"].isin(wrong_ids)]
+    if wrong_words.empty:
+        st.info(tr("wrong_words_empty"))
+        return
+
+    chapters = [tr("wrong_filter_all"), *list(wrong_words["chapter"].drop_duplicates())]
+    selected_chapter = st.selectbox(tr("select_chapter"), chapters)
+    filtered = wrong_words
+    if selected_chapter != tr("wrong_filter_all"):
+        filtered = wrong_words[wrong_words["chapter"] == selected_chapter]
+
+    if st.button(tr("start_wrong_review"), type="primary", use_container_width=True):
+        st.session_state["wrong_review_active"] = True
+        st.session_state["wrong_review_index"] = 0
+        st.session_state["wrong_review_reveal"] = False
+        st.rerun()
+
+    if st.session_state.get("wrong_review_active"):
+        render_wrong_review(filtered.reset_index(drop=True), state)
+
+    st.subheader(tr("wrong_words"))
+    for _, row in filtered.iterrows():
+        render_word_card(row, state, "wrong")
+        if st.button(tr("remove_wrong"), key=f"wrong-remove-{row['word_id']}", use_container_width=True):
+            set_membership(state, "wrong", row["word_id"], False)
+            st.rerun()
+
+
 def render_search(words: pd.DataFrame, state: dict[str, Any]) -> None:
-    st.header("搜索单词")
-    query = st.text_input("输入意大利语、中文、例句或章节关键词", placeholder="例如: precedenza / 优先 / 标志")
+    st.header(tr("search_words"))
+    query = st.text_input(tr("search_label"), placeholder=tr("search_placeholder"))
     if not query.strip():
-        st.caption("输入关键词后会实时搜索 words.csv。")
+        st.caption(tr("search_hint"))
         return
 
     normalized = query.strip().lower()
@@ -1149,52 +1671,451 @@ def render_search(words: pd.DataFrame, state: dict[str, Any]) -> None:
         mask = mask | words[column].astype(str).str.lower().str.contains(normalized, regex=False)
 
     results = words[mask]
-    st.caption(f"找到 {len(results)} 个结果")
+    search_log_key = f"word_search::{state.get('username', '')}"
+    if st.session_state.get(search_log_key) != normalized:
+        safe_log_event(
+            "word_search",
+            username=str(state.get("username", "")),
+            detail={"query_length": len(normalized), "result_count": int(len(results))},
+        )
+        st.session_state[search_log_key] = normalized
+    st.caption(tr("search_results", count=len(results)))
     if results.empty:
-        st.warning("没有匹配结果。")
+        st.warning(tr("no_search_results"))
         return
 
     for _, row in results.iterrows():
         render_word_card(row, state, "search")
 
 
+def image_source_counts(values: pd.Series) -> dict[str, int]:
+    normalized = values.fillna("").astype(str).str.strip()
+    is_empty = normalized == ""
+    is_remote = normalized.str.lower().str.startswith(("http://", "https://"))
+    is_local = (~is_empty) & (~is_remote)
+    return {
+        "empty": int(is_empty.sum()),
+        "remote": int(is_remote.sum()),
+        "local": int(is_local.sum()),
+    }
+
+
+def analyze_uploaded_words_csv(uploaded_file: Any) -> tuple[pd.DataFrame, dict[str, Any]]:
+    uploaded_file.seek(0)
+    preview_df = pd.read_csv(uploaded_file).fillna("")
+    preview_df.columns = [str(column).strip() for column in preview_df.columns]
+
+    missing_columns = [
+        column for column in ADMIN_WORDS_REQUIRED_COLUMNS if column not in preview_df.columns
+    ]
+    chapter_count = (
+        int(preview_df["chapter"].astype(str).str.strip().replace("", pd.NA).dropna().nunique())
+        if "chapter" in preview_df.columns
+        else 0
+    )
+    if "image" in preview_df.columns:
+        image_counts = image_source_counts(preview_df["image"])
+    else:
+        image_counts = {"empty": int(len(preview_df)), "remote": 0, "local": 0}
+
+    duplicate_count = 0
+    duplicate_rows = pd.DataFrame()
+    if "chapter" in preview_df.columns and "italian" in preview_df.columns:
+        duplicate_key = (
+            preview_df["chapter"].astype(str).str.strip().str.lower()
+            + "::"
+            + preview_df["italian"].astype(str).str.strip().str.lower()
+        )
+        duplicate_mask = duplicate_key.duplicated(keep=False) & (duplicate_key != "::")
+        duplicate_count = int(duplicate_mask.sum())
+        duplicate_rows = preview_df.loc[duplicate_mask, ["chapter", "italian"]].head(20)
+
+    analysis = {
+        "row_count": int(len(preview_df)),
+        "chapter_count": chapter_count,
+        "missing_columns": missing_columns,
+        "missing_column_count": int(len(missing_columns)),
+        "image_empty_count": image_counts["empty"],
+        "image_remote_count": image_counts["remote"],
+        "image_local_count": image_counts["local"],
+        "duplicate_count": duplicate_count,
+        "duplicate_rows": duplicate_rows,
+    }
+    return preview_df, analysis
+
+
+def count_words_file(path: Path) -> int:
+    if not path.exists():
+        return 0
+    try:
+        return int(len(pd.read_csv(path)))
+    except Exception:
+        return 0
+
+
+def backup_words_csv(words_path: Path = WORDS_PATH) -> Path:
+    DATA_DIR.mkdir(exist_ok=True)
+    backup_dir = DATA_DIR / "backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = backup_dir / f"words_{timestamp}.csv"
+    shutil.copy2(words_path, backup_path)
+    return backup_path
+
+
+def validate_words_import(analysis: dict[str, Any]) -> list[str]:
+    errors = []
+    if analysis["missing_columns"]:
+        errors.append("字段不完整。")
+    if analysis["duplicate_count"] > 0:
+        errors.append("存在 chapter + italian 重复的词条。")
+    if analysis["row_count"] == 0:
+        errors.append("CSV 中没有词条。")
+    return errors
+
+
+def import_words_csv(
+    preview_df: pd.DataFrame,
+    analysis: dict[str, Any],
+    words_path: Path = WORDS_PATH,
+) -> dict[str, Any]:
+    errors = validate_words_import(analysis)
+    if errors:
+        raise ValueError("；".join(errors))
+
+    original_count = count_words_file(words_path)
+    backup_path = backup_words_csv(words_path)
+    temp_path = words_path.with_name(f".{words_path.name}.tmp")
+    prepared_df = preview_df[ADMIN_WORDS_REQUIRED_COLUMNS].fillna("")
+
+    try:
+        prepared_df.to_csv(temp_path, index=False, encoding="utf-8")
+        os.replace(temp_path, words_path)
+    except Exception:
+        if temp_path.exists():
+            temp_path.unlink()
+        raise
+
+    return {
+        "original_count": original_count,
+        "new_count": int(len(prepared_df)),
+        "backup_path": str(backup_path),
+        "imported_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+def render_admin_backend() -> None:
+    username = require_admin()
+    st.header(tr("admin_backend"))
+    st.caption(tr("admin_backend_caption"))
+    render_persistence_test_area(username)
+
+    uploaded_file = st.file_uploader(tr("upload_csv"), type=["csv"])
+    if uploaded_file is None:
+        st.info(tr("upload_csv_hint"))
+        return
+
+    try:
+        preview_df, analysis = analyze_uploaded_words_csv(uploaded_file)
+    except Exception as exc:
+        st.error(tr("csv_read_failed", error=exc))
+        log_admin_action(
+            username,
+            "preview_words_csv_upload_failed",
+            json.dumps(
+                {
+                    "filename": uploaded_file.name,
+                    "error": str(exc),
+                },
+                ensure_ascii=False,
+            ),
+        )
+        return
+
+    log_signature = (
+        f"{username}:{uploaded_file.name}:{getattr(uploaded_file, 'size', 0)}:"
+        f"{analysis['row_count']}:{analysis['missing_column_count']}"
+    )
+    if st.session_state.get("last_admin_preview_log") != log_signature:
+        log_admin_action(
+            username,
+            "preview_words_csv_upload",
+            json.dumps(
+                {
+                    "filename": uploaded_file.name,
+                    "row_count": analysis["row_count"],
+                    "chapter_count": analysis["chapter_count"],
+                    "missing_columns": analysis["missing_columns"],
+                },
+                ensure_ascii=False,
+            ),
+        )
+        st.session_state["last_admin_preview_log"] = log_signature
+
+    import_errors = validate_words_import(analysis)
+    if analysis["missing_columns"]:
+        st.warning(tr("missing_fields_warning"))
+        st.write(tr("missing_fields"), "、".join(analysis["missing_columns"]))
+    elif analysis["duplicate_count"] > 0:
+        st.warning(tr("duplicate_warning"))
+    else:
+        st.success(tr("ready_to_import"))
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric(tr("row_count"), analysis["row_count"])
+    col2.metric(tr("chapter_count"), analysis["chapter_count"])
+    col3.metric(tr("missing_field_count"), analysis["missing_column_count"])
+    col4.metric(tr("duplicate_count"), analysis["duplicate_count"])
+
+    col4, col5, col6 = st.columns(3)
+    col4.metric(tr("image_empty"), analysis["image_empty_count"])
+    col5.metric(tr("image_remote"), analysis["image_remote_count"])
+    col6.metric(tr("image_local"), analysis["image_local_count"])
+
+    if analysis["duplicate_count"] > 0:
+        st.subheader(tr("duplicate_preview"))
+        st.dataframe(analysis["duplicate_rows"], use_container_width=True)
+
+    st.subheader(tr("preview_first_20"))
+    st.dataframe(preview_df.head(20), use_container_width=True)
+
+    st.divider()
+    if import_errors:
+        st.button(tr("confirm_import"), disabled=True, use_container_width=True)
+        st.caption(tr("fix_before_import"))
+        return
+
+    st.warning(tr("import_warning"))
+    if st.button(tr("confirm_import"), type="primary", use_container_width=True):
+        try:
+            result = import_words_csv(preview_df, analysis)
+        except Exception as exc:
+            st.error(tr("import_failed", error=exc))
+            log_admin_action(
+                username,
+                "import_words_csv_failed",
+                json.dumps(
+                    {
+                        "filename": uploaded_file.name,
+                        "error": str(exc),
+                        "attempted_at": datetime.now().isoformat(timespec="seconds"),
+                    },
+                    ensure_ascii=False,
+                ),
+            )
+            return
+
+        log_admin_action(
+            username,
+            "import_words_csv_confirmed",
+            json.dumps(
+                {
+                    "filename": uploaded_file.name,
+                    "imported_at": result["imported_at"],
+                    "original_count": result["original_count"],
+                    "new_count": result["new_count"],
+                    "backup_path": result["backup_path"],
+                },
+                ensure_ascii=False,
+            ),
+        )
+        load_words.clear()
+        st.success(tr("import_success", old=result["original_count"], new=result["new_count"]))
+        st.info(tr("backup_saved", path=result["backup_path"]))
+        st.rerun()
+
+
+def render_persistence_test_area(username: str) -> None:
+    st.divider()
+    st.subheader("数据持久性测试")
+    st.caption("用于测试本地或 Streamlit Cloud 重新启动后 data/app.db 是否仍然保留。")
+
+    db_exists = DB_PATH.exists()
+    db_size = DB_PATH.stat().st_size if db_exists else 0
+    col1, col2 = st.columns(2)
+    col1.caption(f"数据库路径：{DB_PATH}")
+    col1.caption(f"当前服务器时间：{datetime.now().isoformat(timespec='seconds')}")
+    col2.metric("数据库文件存在", "是" if db_exists else "否")
+    col2.metric("数据库文件大小", f"{db_size} bytes")
+
+    if not db_exists:
+        st.warning("当前没有找到 data/app.db。请先确认应用是否已完成数据库初始化。")
+        return
+
+    with st.form("persistence_marker_form"):
+        test_key = st.text_input("测试 key", value=f"deploy-test-{datetime.now().date().isoformat()}")
+        test_value = st.text_input("测试 value", value="created before restart/redeploy")
+        submitted = st.form_submit_button("创建测试记录", use_container_width=True)
+
+    if submitted:
+        if test_key.strip() and test_value.strip():
+            create_persistence_marker(test_key, test_value)
+            log_admin_action(
+                username,
+                "create_persistence_marker",
+                json.dumps(
+                    {
+                        "test_key": test_key,
+                        "created_at": datetime.now().isoformat(timespec="seconds"),
+                    },
+                    ensure_ascii=False,
+                ),
+            )
+            st.success("测试记录已创建。")
+            st.rerun()
+        else:
+            st.warning("测试 key 和 value 都不能为空。")
+
+    try:
+        markers = get_persistence_markers()
+    except Exception as exc:
+        st.warning(f"读取测试记录失败：{exc}")
+        return
+
+    st.write("当前测试记录")
+    if not markers:
+        st.info("还没有测试记录。")
+        return
+
+    st.dataframe(pd.DataFrame(markers), use_container_width=True)
+    marker_options = {
+        f"#{marker['id']} · {marker['test_key']} · {marker['created_at']}": marker["id"]
+        for marker in markers
+    }
+    selected_marker = st.selectbox("选择要删除的测试记录", list(marker_options))
+    if st.button("删除选中的测试记录", use_container_width=True):
+        marker_id = marker_options[selected_marker]
+        delete_persistence_marker(marker_id)
+        log_admin_action(
+            username,
+            "delete_persistence_marker",
+            json.dumps(
+                {
+                    "marker_id": marker_id,
+                    "deleted_at": datetime.now().isoformat(timespec="seconds"),
+                },
+                ensure_ascii=False,
+            ),
+        )
+        st.success("测试记录已删除。")
+        st.rerun()
+
+
+def render_admin_stats() -> None:
+    require_admin()
+    st.header(tr("analytics"))
+    st.caption(tr("analytics_caption"))
+
+    summary = get_analytics_summary()
+    if not summary.get("ok"):
+        st.warning(tr("analytics_unavailable"))
+        st.caption(str(summary.get("error", "")))
+        return
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric(tr("total_users"), summary["total_users"])
+    col2.metric(tr("active_users_today"), summary["active_users_today"])
+    col3.metric(tr("total_events"), summary["total_events"])
+
+    col4, col5, col6, col7 = st.columns(4)
+    col4.metric(tr("search_count"), summary["search_count"])
+    col5.metric(tr("flashcard_count"), summary["flashcard_count"])
+    col6.metric(tr("favorite_count"), summary["favorite_count"])
+    col7.metric(tr("unknown_count"), summary["unknown_count"])
+
+    st.subheader(tr("top_chapters"))
+    top_chapters = summary.get("top_chapters", [])
+    if not top_chapters:
+        st.info(tr("no_chapter_data"))
+        return
+
+    st.dataframe(
+        pd.DataFrame(top_chapters, columns=[tr("chapter_column"), tr("views_column")]),
+        use_container_width=True,
+    )
+
+
 def main() -> None:
     apply_theme()
+    try:
+        init_db()
+    except Exception as exc:
+        st.error(tr("db_unavailable"))
+        st.caption(str(exc))
+        return
+
     words = load_words()
 
+    render_language_selector()
     username = render_auth_sidebar()
+    if not st.session_state.get("app_open_logged"):
+        safe_log_event("app_open", username=str(username) if username else None)
+        st.session_state["app_open_logged"] = True
     if not username:
-        render_header()
-        st.info("请先在左侧登录或创建账户。登录后会自动读取你的收藏、生词本和学习进度。")
+        public_page = st.session_state.get("public_legal_page")
+        if public_page in {"privacy", "terms"}:
+            render_legal_document(str(public_page))
+        else:
+            render_header()
+            st.info(tr("login_required"))
         return
 
     state_path = state_path_for_user(username)
-    state = load_state(state_path)
-    state["username"] = username
+    state = load_state(username, state_path)
+    state = apply_legacy_word_id_compatibility(state, words)
 
-    st.sidebar.title("学习")
-    page = st.sidebar.radio(
+    st.sidebar.title(tr("learning"))
+    page_options = {
+        tr("home"): "home",
+        tr("chapter_learning"): "chapter",
+        tr("flashcards"): "flashcards",
+        tr("today_review"): "today_review",
+        tr("difficult_words"): "difficult",
+        tr("wrong_words"): "wrong",
+        tr("favorites"): "favorites",
+        tr("search"): "search",
+        tr("privacy_policy"): "privacy",
+        tr("terms_of_service"): "terms",
+    }
+    if current_user_is_admin():
+        page_options[tr("admin_backend")] = "admin"
+        page_options[tr("analytics")] = "analytics"
+    page_label = st.sidebar.radio(
         "导航",
-        ["首页", "章节学习", "闪卡模式", "生词本", "收藏夹", "搜索"],
+        list(page_options),
         label_visibility="collapsed",
     )
+    page = page_options[page_label]
     st.sidebar.divider()
-    st.sidebar.caption(f"词库：{WORDS_PATH.name}")
-    st.sidebar.caption(f"当前账户：{username}")
-    st.sidebar.caption(f"进度文件：{state_path.relative_to(BASE_DIR)}")
+    st.sidebar.caption(tr("vocab_file", name=WORDS_PATH.name))
+    st.sidebar.caption(tr("current_account", username=username))
+    st.sidebar.caption(tr("progress_file", path=state_path.relative_to(BASE_DIR)))
+    show_ad("sidebar_bottom")
 
-    if page == "首页":
+    if page == "home":
         render_home(words, state)
-    elif page == "章节学习":
+    elif page == "chapter":
         render_chapter(words, state)
-    elif page == "闪卡模式":
+    elif page == "flashcards":
         render_flashcards(words, state)
-    elif page == "生词本":
+    elif page == "today_review":
+        render_today_review(words, state)
+    elif page == "difficult":
         render_collection(words, state, "difficult")
-    elif page == "收藏夹":
+    elif page == "wrong":
+        render_wrong_words(words, state)
+    elif page == "favorites":
         render_collection(words, state, "favorites")
-    elif page == "搜索":
+    elif page == "search":
         render_search(words, state)
+    elif page == "privacy":
+        render_legal_document("privacy")
+    elif page == "terms":
+        render_legal_document("terms")
+    elif page == "admin":
+        render_admin_backend()
+    elif page == "analytics":
+        render_admin_stats()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "sample-driving-school-sidebar",
+    "slot": "sidebar_bottom",
+    "title": "驾校广告位",
+    "description": "这里可以放本地驾校、陪练或理论课推广。",
+    "image": "",
+    "link": "",
+    "category": "driving_school",
+    "active": false,
+    "start_date": "",
+    "end_date": ""
+  },
+  {
+    "id": "sample-insurance-home",
+    "slot": "home_top",
+    "title": "保险广告位",
+    "description": "这里可以放车险、道路救援或新手司机服务。",
+    "image": "",
+    "link": "",
+    "category": "insurance",
+    "active": false,
+    "start_date": "",
+    "end_date": ""
+  },
+  {
+    "id": "sample-repair-flashcard",
+    "slot": "flashcard_bottom",
+    "title": "修车厂广告位",
+    "description": "这里可以放修车厂、车商或验车服务。",
+    "image": "",
+    "link": "",
+    "category": "auto_service",
+    "active": false,
+    "start_date": "",
+    "end_date": ""
+  }
+]
