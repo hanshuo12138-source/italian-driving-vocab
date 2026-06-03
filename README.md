@@ -36,6 +36,16 @@ streamlit run app.py
 
 登录时可以勾选“保持登录”。这个功能会生成一个私密登录令牌，请不要把带有 `remember` 参数的网址发给别人。
 
+## 清空测试数据
+
+如果当前还没有真实用户，可以运行下面的脚本清空本地测试账号、学习记录、统计事件、remember token 和持久性测试数据：
+
+```powershell
+python tools/reset_test_data.py
+```
+
+脚本会先列出将要删除的文件，并把 `data/` 完整备份到 `data_backup_YYYYMMDD_HHMMSS/`。只有输入 `YES` 才会继续删除。不要把 `data/` 或 `data_backup_*/` 上传到 GitHub。
+
 ## 互联网部署
 
 参考 `DEPLOYMENT.md`。

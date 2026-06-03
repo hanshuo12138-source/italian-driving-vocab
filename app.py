@@ -125,25 +125,74 @@ def apply_theme() -> None:
             box-shadow: 18px 0 45px rgba(22, 33, 31, 0.18);
         }
 
+        [data-testid="stSidebar"] * {
+            color: #eaf4f0;
+        }
+
         [data-testid="stSidebar"] h1,
         [data-testid="stSidebar"] h2,
         [data-testid="stSidebar"] h3,
         [data-testid="stSidebar"] label,
         [data-testid="stSidebar"] p,
-        [data-testid="stSidebar"] span {
-            color: #ecf4ef;
+        [data-testid="stSidebar"] span,
+        [data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] {
+            color: #eaf4f0;
         }
 
         [data-testid="stSidebar"] small,
-        [data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
-            color: rgba(236, 244, 239, 0.72);
+        [data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+        [data-testid="stSidebar"] [data-testid="stCaptionContainer"] * {
+            color: #b8c8c1;
         }
 
-        [data-testid="stSidebar"] input {
-            background: #f7faf7;
-            color: var(--ink);
+        [data-testid="stSidebar"] input,
+        [data-testid="stSidebar"] textarea,
+        [data-testid="stSidebar"] div[data-baseweb="input"] input {
+            background: #ffffff;
+            color: #0f241e !important;
             border: 1px solid rgba(255, 255, 255, 0.22);
             border-radius: 8px;
+        }
+
+        [data-testid="stSidebar"] input::placeholder,
+        [data-testid="stSidebar"] textarea::placeholder {
+            color: #7a8a83 !important;
+            opacity: 1;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stCheckbox"] label,
+        [data-testid="stSidebar"] [data-testid="stCheckbox"] label *,
+        [data-testid="stSidebar"] [data-testid="stRadio"] label,
+        [data-testid="stSidebar"] [data-testid="stRadio"] label * {
+            color: #eaf4f0 !important;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stCheckbox"] span,
+        [data-testid="stSidebar"] [data-testid="stRadio"] span {
+            color: #eaf4f0 !important;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stSelectbox"] label,
+        [data-testid="stSidebar"] [data-testid="stSelectbox"] label * {
+            color: #eaf4f0 !important;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stSelectbox"] div[data-baseweb="select"],
+        [data-testid="stSidebar"] [data-testid="stSelectbox"] div[data-baseweb="select"] * {
+            color: #0f241e !important;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+            background: #ffffff;
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        [data-testid="stSidebar"] details,
+        [data-testid="stSidebar"] details summary,
+        [data-testid="stSidebar"] details summary *,
+        [data-testid="stSidebar"] [data-testid="stExpander"],
+        [data-testid="stSidebar"] [data-testid="stExpander"] * {
+            color: #eaf4f0 !important;
         }
 
         [data-testid="stSidebar"] div[data-testid="stForm"] {
@@ -160,17 +209,43 @@ def apply_theme() -> None:
 
         [data-testid="stSidebar"] div[data-testid="stButton"] > button,
         [data-testid="stSidebar"] div[data-testid="stFormSubmitButton"] > button {
-            background: #f7faf7;
-            color: #16211f;
+            background: #f4f7f5;
+            color: #0f241e !important;
             border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 8px;
             box-shadow: none;
+        }
+
+        [data-testid="stSidebar"] div[data-testid="stButton"] > button *,
+        [data-testid="stSidebar"] div[data-testid="stFormSubmitButton"] > button * {
+            color: #0f241e !important;
         }
 
         [data-testid="stSidebar"] div[data-testid="stButton"] > button:hover,
         [data-testid="stSidebar"] div[data-testid="stFormSubmitButton"] > button:hover {
             background: #ffffff;
-            color: #16211f;
+            color: #0f241e !important;
             border-color: rgba(255, 255, 255, 0.42);
+        }
+
+        [data-testid="stSidebar"] div[data-testid="stButton"] > button:hover *,
+        [data-testid="stSidebar"] div[data-testid="stFormSubmitButton"] > button:hover * {
+            color: #0f241e !important;
+        }
+
+        [data-testid="stSidebar"] div[data-testid="stButton"] > button:disabled,
+        [data-testid="stSidebar"] div[data-testid="stFormSubmitButton"] > button:disabled,
+        [data-testid="stSidebar"] button:disabled {
+            background: rgba(255, 255, 255, 0.18) !important;
+            color: rgba(255, 255, 255, 0.65) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            opacity: 1 !important;
+        }
+
+        [data-testid="stSidebar"] div[data-testid="stButton"] > button:disabled *,
+        [data-testid="stSidebar"] div[data-testid="stFormSubmitButton"] > button:disabled *,
+        [data-testid="stSidebar"] button:disabled * {
+            color: rgba(255, 255, 255, 0.65) !important;
         }
 
         [data-testid="stSidebar"] hr {
