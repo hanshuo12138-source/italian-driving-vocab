@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 import secrets
 from html import escape
 from datetime import datetime
@@ -20,6 +21,8 @@ DATA_DIR = BASE_DIR / "data"
 STATE_PATH = DATA_DIR / "user_state.json"
 USERS_DIR = DATA_DIR / "users"
 ACCOUNTS_PATH = DATA_DIR / "accounts.json"
+ADMIN_LOG_PATH = DATA_DIR / "admin_logs.jsonl"
+VALID_ROLES = {"user", "admin", "super_admin"}
 
 REQUIRED_COLUMNS = {"chapter", "italian", "chinese"}
 OPTIONAL_COLUMNS = ["pronunciation", "example_it", "example_zh", "note", "image"]
@@ -568,6 +571,16 @@ def normalize_username(username: str) -> str:
     return username.strip().lower()
 
 
+def configured_admin_username() -> str:
+    username = os.environ.get("ADMIN_USERNAME", "")
+    if not username:
+        try:
+            username = st.secrets.get("ADMIN_USERNAME", "")
+        except Exception:
+            username = ""
+    return normalize_username(str(username))
+
+
 def state_path_for_user(username: str) -> Path:
     digest = hashlib.sha256(normalize_username(username).encode("utf-8")).hexdigest()[:16]
     return USERS_DIR / f"{digest}.json"
@@ -589,6 +602,59 @@ def save_accounts(accounts: dict[str, Any]) -> None:
     DATA_DIR.mkdir(exist_ok=True)
     with ACCOUNTS_PATH.open("w", encoding="utf-8") as file:
         json.dump(accounts, file, ensure_ascii=False, indent=2)
+
+
+def account_role(username: str) -> str:
+    username = normalize_username(username)
+    if username and username == configured_admin_username():
+        return "super_admin"
+
+    account = load_accounts().get(username, {})
+    role = str(account.get("role", "user"))
+    return role if role in VALID_ROLES else "user"
+
+
+def set_configured_admin_role(username: str) -> None:
+    username = normalize_username(username)
+    if not username or username != configured_admin_username():
+        return
+
+    accounts = load_accounts()
+    account = accounts.get(username)
+    if not account:
+        return
+    if account.get("role") != "super_admin":
+        account["role"] = "super_admin"
+        save_accounts(accounts)
+
+
+def is_admin(username: str) -> bool:
+    return account_role(username) in {"admin", "super_admin"}
+
+
+def current_user_is_admin() -> bool:
+    return is_admin(str(st.session_state.get("auth_user", "")))
+
+
+def require_admin() -> str:
+    username = str(st.session_state.get("auth_user", ""))
+    if not is_admin(username):
+        st.error("无权限：此操作仅限管理员。")
+        st.stop()
+    return normalize_username(username)
+
+
+def log_admin_action(username: str, action: str, detail: str) -> None:
+    DATA_DIR.mkdir(exist_ok=True)
+    entry = {
+        "username": normalize_username(username),
+        "role": account_role(username),
+        "action": action,
+        "detail": detail,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    with ADMIN_LOG_PATH.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
 def hash_password(password: str, salt: str) -> str:
@@ -661,6 +727,8 @@ def create_account(username: str, password: str) -> tuple[bool, str]:
         return False, "用户名至少需要 3 个字符。"
     if len(password) < 6:
         return False, "密码至少需要 6 个字符。"
+    if username == configured_admin_username():
+        return False, "此用户名已保留，请使用其他用户名。"
 
     accounts = load_accounts()
     if username in accounts:
@@ -671,6 +739,7 @@ def create_account(username: str, password: str) -> tuple[bool, str]:
         "salt": salt,
         "password_hash": hash_password(password, salt),
         "created_at": datetime.now().isoformat(timespec="seconds"),
+        "role": "user",
     }
     save_accounts(accounts)
     return True, username
@@ -686,7 +755,10 @@ def authenticate(username: str, password: str) -> bool:
     salt = account.get("salt", "")
     if not expected_hash or not salt:
         return False
-    return secrets.compare_digest(hash_password(password, salt), expected_hash)
+    ok = secrets.compare_digest(hash_password(password, salt), expected_hash)
+    if ok:
+        set_configured_admin_role(username)
+    return ok
 
 
 def query_param_value(key: str) -> str:
@@ -703,7 +775,9 @@ def restore_login_from_query() -> None:
     username = query_param_value("user")
     token = query_param_value("remember")
     if username and token and authenticate_remember_token(username, token):
-        st.session_state["auth_user"] = normalize_username(username)
+        username = normalize_username(username)
+        set_configured_admin_role(username)
+        st.session_state["auth_user"] = username
 
 
 def render_auth_sidebar() -> str | None:
