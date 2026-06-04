@@ -806,7 +806,10 @@ def image_src(value: Any) -> str:
 
 
 def render_html(html: str) -> None:
-    st.markdown(html, unsafe_allow_html=True)
+    if hasattr(st, "html"):
+        st.html(html)
+    else:
+        st.markdown(html, unsafe_allow_html=True)
 
 
 def parse_date(value: Any) -> datetime.date | None:
