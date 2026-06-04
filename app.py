@@ -4,9 +4,10 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import re
 import secrets
 import shutil
-from html import escape
+from html import escape, unescape
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
@@ -780,8 +781,28 @@ def make_legacy_word_id(row: pd.Series) -> str:
     return f"{row['chapter']}::{row['italian']}".strip().lower()
 
 
+HTML_RESIDUAL_PATTERN = re.compile(r"</?(?:div|span)(?:\s+[^>]*)?>", re.IGNORECASE)
+
+
+def clean_display_text(value: Any) -> str:
+    text = str(value or "")
+    for _ in range(2):
+        text = unescape(text)
+    return HTML_RESIDUAL_PATTERN.sub("", text).strip()
+
+
 def h(value: Any) -> str:
-    return escape(str(value), quote=True)
+    return escape(clean_display_text(value), quote=True)
+
+
+def image_src(value: Any) -> str:
+    src = clean_display_text(value)
+    if not src or "<" in src or ">" in src:
+        return ""
+    lowered = src.lower()
+    if lowered.startswith(("http://", "https://", "assets/", "images/")):
+        return src
+    return ""
 
 
 def render_html(html: str) -> None:
@@ -1529,8 +1550,9 @@ def render_word_card(row: pd.Series, state: dict[str, Any], key_prefix: str) -> 
     if row["note"]:
         note_html = f'<div class="small-muted" style="margin-top:8px;">{h(row["note"])}</div>'
     image_html = ""
-    if row.get("image", ""):
-        image_html = f'<img class="sign-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
+    image_url = image_src(row.get("image", ""))
+    if image_url:
+        image_html = f'<img class="sign-image" src="{h(image_url)}" alt="{h(row["italian"])}" />'
 
     render_html(
         dedent(f"""
@@ -1685,8 +1707,9 @@ def render_flashcards(words: pd.DataFrame, state: dict[str, Any]) -> None:
     else:
         answer_html = f'<div class="small-muted">{h(tr("answer_hint"))}</div>'
     image_html = ""
-    if row.get("image", ""):
-        image_html = f'<img class="flash-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
+    image_url = image_src(row.get("image", ""))
+    if image_url:
+        image_html = f'<img class="flash-image" src="{h(image_url)}" alt="{h(row["italian"])}" />'
 
     render_html(
         dedent(f"""
@@ -1754,8 +1777,9 @@ def render_today_review(words: pd.DataFrame, state: dict[str, Any]) -> None:
     else:
         answer_html = f'<div class="small-muted">{h(tr("answer_hint"))}</div>'
     image_html = ""
-    if row.get("image", ""):
-        image_html = f'<img class="flash-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
+    image_url = image_src(row.get("image", ""))
+    if image_url:
+        image_html = f'<img class="flash-image" src="{h(image_url)}" alt="{h(row["italian"])}" />'
 
     render_html(
         dedent(f"""
@@ -1836,8 +1860,9 @@ def render_wrong_review(review_words: pd.DataFrame, state: dict[str, Any]) -> No
         else f'<div class="small-muted">{h(tr("answer_hint"))}</div>'
     )
     image_html = ""
-    if row.get("image", ""):
-        image_html = f'<img class="flash-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
+    image_url = image_src(row.get("image", ""))
+    if image_url:
+        image_html = f'<img class="flash-image" src="{h(image_url)}" alt="{h(row["italian"])}" />'
 
     render_html(
         dedent(f"""
