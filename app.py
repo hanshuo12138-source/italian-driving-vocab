@@ -40,7 +40,7 @@ from db import (
 )
 
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).resolve().parent
 WORDS_PATH = BASE_DIR / "words.csv"
 ADS_PATH = BASE_DIR / "ads.json"
 DOCS_DIR = BASE_DIR / "docs"
@@ -250,6 +250,131 @@ def apply_theme() -> None:
 
         [data-testid="stSidebar"] hr {
             border-color: rgba(255, 255, 255, 0.10);
+        }
+
+        [data-testid="stSidebar"] .logged-in-sidebar-marker {
+            display: none;
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stSelectbox"] {
+            margin-bottom: 2px;
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stSelectbox"] label {
+            font-size: 0.76rem;
+            margin-bottom: 0;
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+            min-height: 34px;
+            padding-top: 1px;
+            padding-bottom: 1px;
+        }
+
+        [data-testid="stSidebar"] .compact-account-title {
+            margin: 8px 0 5px;
+            color: #cfe0d9;
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+
+        [data-testid="stSidebar"] .compact-login-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            border-radius: 8px;
+            padding: 7px 9px;
+            margin-bottom: 6px;
+            color: #dcebe5;
+            font-size: 0.82rem;
+            line-height: 1.35;
+        }
+
+        [data-testid="stSidebar"] .compact-login-card strong {
+            color: #ffffff;
+            font-weight: 800;
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stExpander"] {
+            margin: 2px 0 4px;
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) details summary {
+            min-height: 30px;
+            padding: 4px 6px;
+            font-size: 0.84rem;
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) div[data-testid="stButton"] > button {
+            min-height: 32px;
+            padding: 5px 10px;
+            font-size: 0.84rem;
+        }
+
+        [data-testid="stSidebar"] .learning-nav-title {
+            margin: 18px 0 10px;
+            padding-top: 4px;
+            color: #f5fbff;
+            font-size: 1.18rem;
+            font-weight: 800;
+            letter-spacing: 0;
+        }
+
+        [data-testid="stSidebar"] .learning-nav-title::after {
+            content: "";
+            display: block;
+            width: 44px;
+            height: 3px;
+            margin-top: 7px;
+            border-radius: 999px;
+            background: #2f6bff;
+            box-shadow: 0 0 16px rgba(47, 107, 255, 0.48);
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stRadio"] div[role="radiogroup"] {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stRadio"] label {
+            width: 100%;
+            min-height: 40px;
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid rgba(255, 255, 255, 0.075);
+            border-radius: 11px;
+            padding: 10px 12px;
+            color: #c9d6e8 !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+            transition: background 120ms ease, border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stRadio"] label:hover {
+            background: rgba(255, 255, 255, 0.085);
+            border-color: rgba(147, 184, 255, 0.32);
+            transform: translateY(-1px);
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stRadio"] label:has(input:checked) {
+            background: #2f5bff;
+            border-color: rgba(153, 184, 255, 0.85);
+            box-shadow: inset 4px 0 0 #8fb3ff, 0 12px 24px rgba(47, 91, 255, 0.24);
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stRadio"] label > div:first-child,
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stRadio"] label input {
+            display: none;
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stRadio"] label * {
+            color: #c9d6e8 !important;
+            font-weight: 700;
+            line-height: 1.18;
+        }
+
+        [data-testid="stSidebar"]:has(.logged-in-sidebar-marker) [data-testid="stRadio"] label:has(input:checked) * {
+            color: #ffffff !important;
+            font-weight: 820;
         }
 
         h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
@@ -659,6 +784,10 @@ def h(value: Any) -> str:
     return escape(str(value), quote=True)
 
 
+def render_html(html: str) -> None:
+    st.markdown(html, unsafe_allow_html=True)
+
+
 def parse_date(value: Any) -> datetime.date | None:
     text = str(value or "").strip()
     if not text:
@@ -782,15 +911,14 @@ def show_ad(slot_name: str) -> None:
         st.session_state[view_key] = True
 
     with st.container():
-        st.markdown(
+        render_html(
             dedent(f"""
             <div class="word-card" style="padding:14px;margin-top:14px;">
                 <div class="small-muted">{h(tr("ad_label"))}</div>
                 <div class="word-title" style="font-size:18px;">{h(title)}</div>
                 <div class="small-muted">{h(description)}</div>
             </div>
-            """),
-            unsafe_allow_html=True,
+            """)
         )
         if image:
             st.image(image, use_container_width=True)
@@ -1038,16 +1166,28 @@ def restore_login_from_query() -> None:
         safe_log_event("user_login", username=username, detail={"method": "remember"})
 
 
+def load_markdown_doc(filename: str) -> str:
+    path = DOCS_DIR / filename
+    try:
+        resolved_path = path.resolve()
+        resolved_path.relative_to(DOCS_DIR.resolve())
+        if not resolved_path.exists():
+            return "文档文件不存在，请联系管理员。"
+        return resolved_path.read_text(encoding="utf-8")
+    except Exception as exc:
+        return f"暂时无法加载该文档，请稍后再试。错误信息：{exc}"
+
+
 def render_legal_document(document: str) -> None:
     docs = {
-        "privacy": PRIVACY_POLICY_PATH,
-        "terms": TERMS_OF_SERVICE_PATH,
+        "privacy": PRIVACY_POLICY_PATH.name,
+        "terms": TERMS_OF_SERVICE_PATH.name,
     }
-    path = docs.get(document)
-    if not path or not path.exists():
+    filename = docs.get(document)
+    if not filename:
         st.warning(tr("legal_doc_missing"))
         return
-    st.markdown(path.read_text(encoding="utf-8"))
+    st.markdown(load_markdown_doc(filename))
 
 
 def render_public_legal_links() -> None:
@@ -1057,6 +1197,37 @@ def render_public_legal_links() -> None:
         st.session_state["public_legal_page"] = "privacy"
     if st.sidebar.button(tr("terms_of_service"), key="public_terms_of_service", use_container_width=True):
         st.session_state["public_legal_page"] = "terms"
+    if st.session_state.get("public_legal_page") in {"privacy", "terms"}:
+        if st.sidebar.button("返回登录/首页", key="public_legal_back", use_container_width=True):
+            st.session_state.pop("public_legal_page", None)
+            st.rerun()
+
+
+def render_sidebar_author_note() -> None:
+    st.sidebar.divider()
+    st.sidebar.markdown(
+        """
+        <div style="
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 8px;
+            padding: 14px 13px;
+            margin-top: 4px;
+            line-height: 1.62;
+        ">
+            <div style="font-weight: 700; color: #EAF4F0; margin-bottom: 8px;">联系邮箱</div>
+            <div style="font-weight: 700; color: #FFFFFF; margin-bottom: 14px;">hanshuo12138@gmail.com</div>
+            <div style="font-weight: 700; color: #EAF4F0; margin-bottom: 8px;">作者的话</div>
+            <div style="color: #DDE9E4; font-size: 0.92rem;">
+                本程序是一个面向在意大利生活的外国人的驾照理论词汇学习工具，希望能帮助大家更轻松地理解意大利语考试词汇，提高备考效率。<br><br>
+                目前项目仍处于测试阶段，现阶段免费开放使用。<br>
+                如果你在使用过程中发现错误、显示问题，或者有任何改进建议，欢迎发送邮件告诉我。<br>
+                感谢大家的支持与反馈，在下感激不尽！
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_change_password_form(username: str) -> None:
@@ -1101,9 +1272,17 @@ def render_change_password_form(username: str) -> None:
 def render_auth_sidebar() -> str | None:
     restore_login_from_query()
     current_user = st.session_state.get("auth_user")
-    st.sidebar.title(tr("account"))
     if current_user:
-        st.sidebar.success(tr("logged_in_as", username=current_user))
+        st.sidebar.markdown('<div class="logged-in-sidebar-marker"></div>', unsafe_allow_html=True)
+        st.sidebar.markdown(
+            f"""
+            <div class="compact-account-title">{escape(tr("account"))}</div>
+            <div class="compact-login-card">
+                已登录：<strong>{escape(str(current_user))}</strong>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         render_change_password_form(str(current_user))
         if st.sidebar.button(tr("logout"), use_container_width=True):
             revoke_remember_token(str(current_user), query_param_value("remember"))
@@ -1112,6 +1291,7 @@ def render_auth_sidebar() -> str | None:
             st.rerun()
         return str(current_user)
 
+    st.sidebar.title(tr("account"))
     auth_modes = {
         tr("login"): "login",
         tr("create_account"): "create_account",
@@ -1159,6 +1339,7 @@ def render_auth_sidebar() -> str | None:
 
     st.sidebar.info(tr("remember_tip"))
     render_public_legal_links()
+    render_sidebar_author_note()
     return None
 
 
@@ -1285,15 +1466,14 @@ def mark_seen(
 
 
 def render_header() -> None:
-    st.markdown(
+    render_html(
         dedent(f"""
         <div class="hero-panel">
             <div class="hero-kicker">Patente B · Teoria</div>
             <div class="app-title">{h(tr("hero_title"))}</div>
             <div class="app-subtitle">{h(tr("hero_subtitle"))}</div>
         </div>
-        """),
-        unsafe_allow_html=True,
+        """)
     )
 
 
@@ -1304,7 +1484,7 @@ def render_metrics(words: pd.DataFrame, state: dict[str, Any]) -> None:
     total = len(words)
     progress = round(len(learned) / total * 100) if total else 0
 
-    st.markdown(
+    render_html(
         dedent(f"""
         <div class="metric-row">
             <div class="metric-card">
@@ -1326,8 +1506,7 @@ def render_metrics(words: pd.DataFrame, state: dict[str, Any]) -> None:
         </div>
         <div class="progress-track"><div class="progress-fill" style="width:{progress}%"></div></div>
         <div class="small-muted">{h(tr("overall_progress", progress=progress))}</div>
-        """),
-        unsafe_allow_html=True,
+        """)
     )
 
 
@@ -1353,7 +1532,7 @@ def render_word_card(row: pd.Series, state: dict[str, Any], key_prefix: str) -> 
     if row.get("image", ""):
         image_html = f'<img class="sign-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
 
-    st.markdown(
+    render_html(
         dedent(f"""
         <div class="word-card">
             <div class="word-layout">
@@ -1368,8 +1547,7 @@ def render_word_card(row: pd.Series, state: dict[str, Any], key_prefix: str) -> 
                 {image_html}
             </div>
         </div>
-        """),
-        unsafe_allow_html=True,
+        """)
     )
 
     col1, col2, col3 = st.columns(3)
@@ -1396,7 +1574,7 @@ def render_home(words: pd.DataFrame, state: dict[str, Any]) -> None:
     render_header()
     show_ad("home_top")
     render_metrics(words, state)
-    st.markdown(f'<div class="section-title">{h(tr("chapters"))}</div>', unsafe_allow_html=True)
+    render_html(f'<div class="section-title">{h(tr("chapters"))}</div>')
 
     learned = state_set(state, "learned")
     chapter_html = ['<div class="chapter-grid">']
@@ -1419,7 +1597,7 @@ def render_home(words: pd.DataFrame, state: dict[str, Any]) -> None:
             """)
         )
     chapter_html.append("</div>")
-    st.markdown("".join(chapter_html), unsafe_allow_html=True)
+    render_html("".join(chapter_html))
 
 
 def render_chapter(words: pd.DataFrame, state: dict[str, Any]) -> None:
@@ -1510,7 +1688,7 @@ def render_flashcards(words: pd.DataFrame, state: dict[str, Any]) -> None:
     if row.get("image", ""):
         image_html = f'<img class="flash-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
 
-    st.markdown(
+    render_html(
         dedent(f"""
         <div class="flash-card">
             <div class="small-muted">{h(row['chapter'])} · {progress_text}</div>
@@ -1519,8 +1697,7 @@ def render_flashcards(words: pd.DataFrame, state: dict[str, Any]) -> None:
             <div class="small-muted">{h(row['pronunciation'])}</div>
             {answer_html}
         </div>
-        """),
-        unsafe_allow_html=True,
+        """)
     )
 
     col1, col2, col3, col4 = st.columns(4)
@@ -1580,7 +1757,7 @@ def render_today_review(words: pd.DataFrame, state: dict[str, Any]) -> None:
     if row.get("image", ""):
         image_html = f'<img class="flash-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
 
-    st.markdown(
+    render_html(
         dedent(f"""
         <div class="flash-card">
             <div class="small-muted">{h(row['chapter'])} · {h(tr("review_progress", current=index + 1, total=len(due_words)))}</div>
@@ -1589,8 +1766,7 @@ def render_today_review(words: pd.DataFrame, state: dict[str, Any]) -> None:
             <div class="small-muted">{h(row['pronunciation'])}</div>
             {answer_html}
         </div>
-        """),
-        unsafe_allow_html=True,
+        """)
     )
 
     col1, col2, col3 = st.columns(3)
@@ -1663,7 +1839,7 @@ def render_wrong_review(review_words: pd.DataFrame, state: dict[str, Any]) -> No
     if row.get("image", ""):
         image_html = f'<img class="flash-image" src="{h(row["image"])}" alt="{h(row["italian"])}" />'
 
-    st.markdown(
+    render_html(
         dedent(f"""
         <div class="flash-card">
             <div class="small-muted">{h(row['chapter'])} · {index + 1}/{len(review_words)}</div>
@@ -1672,8 +1848,7 @@ def render_wrong_review(review_words: pd.DataFrame, state: dict[str, Any]) -> No
             <div class="small-muted">{h(row['pronunciation'])}</div>
             {answer_html}
         </div>
-        """),
-        unsafe_allow_html=True,
+        """)
     )
 
     col1, col2, col3, col4 = st.columns(4)
@@ -2139,7 +2314,10 @@ def main() -> None:
     state = load_state(username, state_path)
     state = apply_legacy_word_id_compatibility(state, words)
 
-    st.sidebar.title(tr("learning"))
+    st.sidebar.markdown(
+        f'<div class="learning-nav-title">{escape(tr("learning"))}</div>',
+        unsafe_allow_html=True,
+    )
     page_options = {
         tr("home"): "home",
         tr("chapter_learning"): "chapter",
@@ -2161,10 +2339,7 @@ def main() -> None:
         label_visibility="collapsed",
     )
     page = page_options[page_label]
-    st.sidebar.divider()
-    st.sidebar.caption(tr("vocab_file", name=WORDS_PATH.name))
-    st.sidebar.caption(tr("current_account", username=username))
-    st.sidebar.caption(tr("progress_file", path=state_path.relative_to(BASE_DIR)))
+    render_sidebar_author_note()
     show_ad("sidebar_bottom")
 
     if page == "home":
