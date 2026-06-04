@@ -1,53 +1,41 @@
 # WORDS_QUALITY_AUDIT.md
 
-生成时间：2026-06-04 01:55:00
+生成时间：2026-06-04 03:02:02
 
-## 本次最终修复记录
+## 本次修复记录
 
-- 本次检查剩余规则判定可疑词条数量：6
-- 本次实际修复词条数量：6
-- 本次规则误判数量：0
-- 累计已修复明显中意混杂词条数量：156
-- 备份文件：`data/backups/words_quality_final_fix_20260604_015413.csv`
-- 修复的 word_id：`WORD_000481`, `WORD_000482`, `WORD_000483`, `WORD_000484`, `WORD_000273`, `WORD_000294`
-- 当前仍被规则判定为可疑的词条数量：0
-- 当前 note 中标记“需人工校对”的词条数量：41
+- 本次扫描字段：`chinese`、`example_zh`、`note`
+- 本次实际修复中意混杂/机器翻译残留词条数量：128
+- 备份文件：`data/backups/words_mixed_language_fix_20260604_030037.csv`
+- 当前仍被本轮目标规则判定为可疑的词条数量：0
+- 当前 note 或中文说明中标记“需人工校对”的词条数量：66
 
-## 审计范围
+## 本次重点清理的残留类型
 
-- 文件：`words.csv`
-- 字段：`chinese`、`example_zh`、`note`
-- 本报告只记录词库中文释义质量审计结果。
+- 大写意大利语短语残留，例如 `SI POSSONO`、`SORPASSARE`、`DISTANZIAMENTO MINIMO OBBLIGATORIO`。
+- 中意混杂机器翻译，例如“车辆 SENZA MOTORE”“和 QUELLI”“的70 METRI”“CHE PRECEDE”。
+- 中文说明中拼接完整意大利语图形说明的问题。
+- 交通标志、辅助牌、仪表符号说明中的机器翻译词块。
+
+## 本次修改的 word_id
+
+`WORD_000006`, `WORD_000090`, `WORD_000092`, `WORD_000107`, `WORD_000110`, `WORD_000112`, `WORD_000116`, `WORD_000130`, `WORD_000138`, `WORD_000139`, `WORD_000152`, `WORD_000153`, `WORD_000154`, `WORD_000159`, `WORD_000160`, `WORD_000161`, `WORD_000162`, `WORD_000172`, `WORD_000173`, `WORD_000174`, `WORD_000186`, `WORD_000192`, `WORD_000193`, `WORD_000197`, `WORD_000198`, `WORD_000199`, `WORD_000200`, `WORD_000201`, `WORD_000202`, `WORD_000203`, `WORD_000205`, `WORD_000206`, `WORD_000207`, `WORD_000208`, `WORD_000209`, `WORD_000212`, `WORD_000214`, `WORD_000215`, `WORD_000216`, `WORD_000217`, `WORD_000218`, `WORD_000219`, `WORD_000220`, `WORD_000221`, `WORD_000223`, `WORD_000224`, `WORD_000225`, `WORD_000228`, `WORD_000229`, `WORD_000231`, `WORD_000234`, `WORD_000235`, `WORD_000238`, `WORD_000239`, `WORD_000240`, `WORD_000242`, `WORD_000245`, `WORD_000247`, `WORD_000248`, `WORD_000249`, `WORD_000250`, `WORD_000252`, `WORD_000254`, `WORD_000256`, `WORD_000257`, `WORD_000260`, `WORD_000263`, `WORD_000264`, `WORD_000267`, `WORD_000269`, `WORD_000272`, `WORD_000278`, `WORD_000279`, `WORD_000280`, `WORD_000281`, `WORD_000282`, `WORD_000283`, `WORD_000285`, `WORD_000286`, `WORD_000287`, `WORD_000288`, `WORD_000289`, `WORD_000290`, `WORD_000297`, `WORD_000298`, `WORD_000299`, `WORD_000307`, `WORD_000311`, `WORD_000312`, `WORD_000313`, `WORD_000314`, `WORD_000315`, `WORD_000316`, `WORD_000317`, `WORD_000318`, `WORD_000320`, `WORD_000323`, `WORD_000324`, `WORD_000325`, `WORD_000345`, `WORD_000346`, `WORD_000393`, `WORD_000396`, `WORD_000397`, `WORD_000398`, `WORD_000400`, `WORD_000401`, `WORD_000402`, `WORD_000403`, `WORD_000404`, `WORD_000405`, `WORD_000406`, `WORD_000407`, `WORD_000408`, `WORD_000409`, `WORD_000410`, `WORD_000411`, `WORD_000412`, `WORD_000420`, `WORD_000421`, `WORD_000422`, `WORD_000423`, `WORD_000424`, `WORD_000425`, `WORD_000444`, `WORD_000459`, `WORD_000460`, `WORD_000461`
 
 ## 汇总
 
 - 总词条数：484
-- 可疑词条数量：0
-- 误判词条数量：0
+- 本轮修复词条数：128
+- 本轮目标规则剩余可疑词条数：0
+- 仍需人工校对词条数：66
 
-## 本次修复说明
+## 说明
 
-以下 6 条原本存在明显中意混杂、机器翻译残留或外文拼接问题，已改为自然中文：
+本次只修改了 `words.csv` 中的 `chinese`、`example_zh`、`note` 三个字段，没有修改 `word_id`、`italian`、`example_it`、图片、来源、版权字段，也没有修改应用代码或数据库。
 
-| word_id | italian | 修复说明 |
-|---|---|---|
-| `WORD_000481` | `segnale di fermata scuolabus integrato con pannello fascia oraria di tutti i giorni` | 改为“校车停靠标志，附加每天适用的时间段”。 |
-| `WORD_000482` | `segnale di lavori in corso integrato con pannello di fine` | 改为“道路施工标志，附加结束辅助牌”。 |
-| `WORD_000483` | `segnali di rotatoria (a) e di preavviso di circolazione rotatoria (b)` | 改为“环岛标志和环岛通行预告标志”。 |
-| `WORD_000484` | `segnale di diritto di precedenza (a) e pannello integrativo andamento della strada principale (b)` | 改为“优先通行权标志和主路走向辅助牌”。 |
-| `WORD_000273` | `cono: segnala zone di lavoro di breve durata, incanalamenti temporanei, deviazioni, aree interessate da incidenti` | 改为交通锥用于提示短时施工、临时导流、绕行或事故区域。 |
-| `WORD_000294` | `pannelli posteriori per rimorchi e semirimorchi adibiti al trasporto merci di massa a pieno carico oltre 3,5 t.` | 改为货运挂车和半挂车后部标志牌说明。 |
-
-## 当前最严重的前 20 条
-
-暂无。当前规则判定可疑词条数量为 0。
-
-## 全部仍可疑词条
-
-暂无。
+`需人工校对` 表示当前中文已尽量改为自然表达，但仍建议之后结合交通标志图片、官方教材或驾校资料逐条确认准确含义。
 
 ## 后续建议
 
-1. `note` 中仍有 41 条“需人工校对”标记，后续应结合交通标志图形和官方语境逐步人工确认。
-2. 未来导入新词库时，继续运行质量审计，重点检查 `chinese`、`example_zh`、`note` 三列。
-3. 商业化前仍需继续检查图片来源、题库来源和释义准确性。
+1. 后续导入新词库后，继续扫描 `chinese`、`example_zh`、`note` 中的大写意大利语残留和中意混杂表达。
+2. 对 `note` 中标记“需人工校对”的 66 条词条，结合图形和官方语境逐步确认。
+3. 商业化前继续做词库人工校对，避免机器翻译或来源解释不准确影响学习效果。
