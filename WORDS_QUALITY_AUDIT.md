@@ -39,3 +39,34 @@
 1. 后续导入新词库后，继续扫描 `chinese`、`example_zh`、`note` 中的大写意大利语残留和中意混杂表达。
 2. 对 `note` 中标记“需人工校对”的 66 条词条，结合图形和官方语境逐步确认。
 3. 商业化前继续做词库人工校对，避免机器翻译或来源解释不准确影响学习效果。
+
+## 2026-06-04 人工翻译校正
+
+- 更新时间：2026-06-04 21:52:21
+- 本次按人工校对映射表精确匹配并修复词条数量：34
+- 未匹配词条数量：0
+- 备份文件：`data/backups/words_manual_translation_fix_20260604_215145.csv`
+- 第 17 条 `italian` 字段已将 `trafoi` 修正为 `trafori`。
+- 本次只允许并实际修改 `words.csv` 的 `chinese`、`example_zh`、`note` 字段，以及第 17 条的 `italian` 拼写。
+- 本次检查的 34 条词条中，未发现目标中意混杂残留：`SI POSSONO`、`SENZA MOTORE`、`QUELLI`、`DUE RUOTE`、`METRI`、`CHE PRECEDE`、`DISTANZIAMENTO`。
+
+本次修改的 `word_id`：
+
+`WORD_000097`, `WORD_000098`, `WORD_000105`, `WORD_000111`, `WORD_000131`, `WORD_000143`, `WORD_000148`, `WORD_000149`, `WORD_000150`, `WORD_000182`, `WORD_000189`, `WORD_000191`, `WORD_000194`, `WORD_000195`, `WORD_000198`, `WORD_000204`, `WORD_000227`, `WORD_000250`, `WORD_000260`, `WORD_000266`, `WORD_000267`, `WORD_000268`, `WORD_000276`, `WORD_000277`, `WORD_000352`, `WORD_000365`, `WORD_000367`, `WORD_000369`, `WORD_000373`, `WORD_000376`, `WORD_000458`, `WORD_000462`, `WORD_000467`, `WORD_000478`
+
+## 2026-06-04 人工翻译校正第二批
+
+- 更新时间：2026-06-04 22:36:10
+- 本次人工校对目标数量：43
+- 成功匹配并处理目标数量：43
+- 未匹配目标数量：0
+- 本次实际发生内容变化的词条数量：10
+- 备份文件：`data/backups/words_manual_translation_fix_20260604_223536.csv`
+- `trafoi` 已确认修正为 `trafori`。
+- 图形 570 已单独将 `italian` 改为 `corsie di canalizzazione senza frecce direzionali`，中文改为“没有方向箭头的车道”。
+- 图形 574 已标记：图片可能与图形 572 重复，需人工校对。
+- 本次处理的目标词条中，未发现 `CANALIZZAZIONE`、`SI POSSONO`、`SENZA MOTORE`、`QUELLI`、`DUE RUOTE`、`CHE PRECEDE`、`DISTANZIAMENTO` 等中意混杂残留。
+
+本次实际变更的 `word_id`：
+
+`WORD_000143`, `WORD_000144`, `WORD_000340`, `WORD_000335`, `WORD_000342`, `WORD_000308`, `WORD_000309`, `WORD_000331`, `WORD_000332`, `WORD_000333`

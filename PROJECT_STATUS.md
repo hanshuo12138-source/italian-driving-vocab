@@ -570,3 +570,134 @@ docs/TERMS_OF_SERVICE.md
 - 当前标记“需人工校对”的词条数量为 66。
 - 本次备份文件：`data/backups/words_mixed_language_fix_20260604_030037.csv`。
 - 本次没有修改 `app.py`、`db.py`、账户系统、数据库、管理员后台、广告系统、统计系统或 sidebar UI。
+
+## 2026-06-04 人工词库校正更新
+
+- 本次根据人工校对映射表校正 34 条词条。
+- 第 17 条已将 `italian` 中的 `trafoi` 修正为 `trafori`。
+- 本次未修改 `app.py`、`db.py`、`i18n.py`、账户系统、数据库、UI、管理员后台、广告系统、统计系统或图片链接。
+- 本次只修改了 `words.csv`、`WORDS_QUALITY_AUDIT.md`、`PROJECT_STATUS.md`。
+- 备份文件：`data/backups/words_manual_translation_fix_20260604_215145.csv`。
+
+## 2026-06-04 人工词库校正第二批
+
+- 本次根据人工校对映射表处理 43 个目标，全部匹配成功，未匹配数量为 0。
+- 本次实际发生内容变化的词条数量为 10。
+- `trafoi` 已确认修正为 `trafori`。
+- 图形 570 已单独改为“没有方向箭头的车道”，并将 `italian` 改为 `corsie di canalizzazione senza frecce direzionali`。
+- 图形 574 已标记“图片可能与图形 572 重复，需人工校对”。
+- 本次只修改了 `words.csv`、`WORDS_QUALITY_AUDIT.md`、`PROJECT_STATUS.md`，并新增词库备份文件。
+- 备份文件：`data/backups/words_manual_translation_fix_20260604_223536.csv`。
+
+## 2026-06-04 交通图形库拆分更新
+
+- 已新增 `SIGN_COVERAGE_AUDIT.md`，用于审计当前 `words.csv` 与 rmastri/WEBpatente 图形编号覆盖差距。
+- 审计结果显示：当前 `words.csv` 总词条数 484，`image` 非空 434，`rmastri.it` 图片 434，按图片 URL 估算唯一图形编号 432，覆盖率约 44.44%。
+- 已新增独立文件 `signs.csv`，从 `words.csv` 复制/迁移出所有带图形编号或图片的交通图形词条。
+- `signs.csv` 当前共有 434 行，唯一 `figure_id` 432 个。
+- `signs.csv` 中 `review_status = imported_from_words` 为 349 行，`review_status = needs_review` 为 85 行。
+- 本次没有删除或合并 `words.csv` 原内容，没有下载图片，也没有修改 `app.py`、`db.py`、`i18n.py`。
+- 下一步建议先人工校对 `signs.csv` 中 `needs_review` 的 85 条，尤其是 note 图形编号与 image 文件编号不一致的记录。
+
+## 2026-06-04 官方题库候选词库准备
+
+- 已确认学习资源将拆成两个库建设：`words.csv` 未来用于题库词汇、词组、固定搭配；`signs.csv` 用于交通标志、图形、标线、信号灯、交警手势、辅助牌、通行顺序图。
+- 已新增 `data_sources/` 目录，用于存放官方 Patente AB 题库/listato 的人工整理原始文件。
+- 已新增 `data_sources/official_quiz_ab.csv` 模板，作为官方题库整理入口。
+- 已新增 `data_sources/vocab_candidates.csv` 模板，用于保存从官方题库抽取出的候选词。
+- 已新增 `fixed_phrases.csv` 模板，用于保存固定搭配候选。
+- 已新增 `glossary.csv`，首批内置 21 个基础交通/驾考术语，后续用于统一中文译名。
+- 已新增工具草稿 `tools/extract_vocab_candidates.py` 和 `tools/extract_fixed_phrases.py`，用于从 `official_quiz_ab.csv` 生成候选词和固定搭配。
+- 已新增 `docs/VOCAB_EXTRACTION_WORKFLOW.md`，说明从官方题库到候选词、机器初译、人工校对、再决定是否合并进 `words.csv` 的工作流。
+- 本次未修改 `app.py`、`db.py`、`i18n.py`，未改变现有页面和业务功能，未爬网站，未下载图片，未修改现有 `words.csv` 内容。
+
+## 2026-06-05 官方题库候选词清洗优化
+
+- 已优化 `tools/extract_vocab_candidates.py`，扩充意大利语停用词表，过滤冠词、介词、介词冠词合成、连词、代词、常见副词、助动词和高频泛用动词。
+- 已增加候选词过滤规则：过滤长度小于 3 的词、纯数字、纯符号和明显停用词，同时保留 `veicolo`、`strada`、`precedenza`、`velocità`、`corsia`、`carreggiata`、`sorpasso`、`pericolo`、`sicurezza` 等考试核心词汇。
+- 已重新生成 `data_sources/vocab_candidates.csv`。清洗前旧候选词数量为 5255 条，清洗后候选词数量为 4896 条。
+- 已新增 `data_sources/VOCAB_CANDIDATES_AUDIT.md`，记录清洗前后数量、高频保留候选词、高频过滤词、低价值样例、建议加入 `glossary.csv` 的高频术语候选和乱码检查结果。
+- 本次未修改 `app.py`、`db.py`、`i18n.py`、`words.csv`、`signs.csv`、`fixed_phrases.csv`、`glossary.csv`、`official_quiz_ab.csv`。
+
+## 2026-06-05 官方题库候选词词形归并
+
+- 已将 `tools/extract_vocab_candidates.py` 从单纯清洗升级为“候选词抽取 + 词形归并 + 分类标记”工具。
+- 已重新生成 `data_sources/vocab_candidates.csv`，当前未归并候选词数量为 4923 条。
+- 已新增 `data_sources/vocab_grouped_candidates.csv`，当前归并后 lemma 数量为 4846 条，词形归并减少重复 77 条。
+- 当前分类数量：`core_vocab` 34 条，`exam_expression` 10 条，`grammar_signal` 12 条，`number_direction` 17 条，`needs_review` 4773 条。
+- 题干表达和语法信号词已保留并分类，不再简单删除，例如 `dovere`、`potere`、`solo`、`anche`、`raffigurare`、`rappresentare`、`indicare`、`vietare`。
+- 已更新 `data_sources/VOCAB_CANDIDATES_AUDIT.md`，记录高频 lemma、surface_forms 最多的 lemma、各分类 Top 列表和人工优先校对建议。
+- 本次未修改 `app.py`、`db.py`、`i18n.py`、`words.csv`、`signs.csv`、`official_quiz_ab.csv`、`fixed_phrases.csv`、`glossary.csv`。
+
+## 2026-06-05 官方题库候选词人工分类种子表
+
+- 已新增 `data_sources/vocab_category_seed.csv`，作为人工可维护的候选词分类种子表。
+- 种子表字段为 `lemma`、`category`、`preferred_chinese`、`pos`、`note`，当前共有 94 条种子词。
+- 已更新 `tools/extract_vocab_candidates.py`，候选词分类现在优先读取 `vocab_category_seed.csv`；命中种子表时使用表内的 `category`、`preferred_chinese` 和 `pos`。
+- 已重新生成 `data_sources/vocab_candidates.csv` 和 `data_sources/vocab_grouped_candidates.csv`。当前未归并候选词数量为 4927 条，归并后 lemma 数量为 4846 条，词形归并减少重复 81 条。
+- 当前 seed 命中 lemma 数量为 90，未命中 lemma 数量为 4756。
+- 当前分类数量：`core_vocab` 45 条，`exam_expression` 17 条，`grammar_signal` 14 条，`number_direction` 19 条，`needs_review` 4751 条。
+- 已更新 `data_sources/VOCAB_CANDIDATES_AUDIT.md`，新增 seed 命中统计、各分类数量、各分类高频 Top 列表和高频 needs_review 列表。
+- 本次未修改 `app.py`、`db.py`、`i18n.py`、`words.csv`、`signs.csv`、`official_quiz_ab.csv`、`fixed_phrases.csv`、`glossary.csv`。
+
+## 2026-06-05 官方题库候选词人工排除表
+
+- 已新增 `data_sources/vocab_exclude_seed.csv`，作为人工可维护的候选词排除表。
+- 排除表字段为 `lemma`、`reason`、`note`，当前共有 24 条排除词。
+- 已更新 `tools/extract_vocab_candidates.py`，候选词抽取现在支持人工排除词表；词形归并后如果 lemma 命中排除表，则不会输出到 `vocab_candidates.csv` 和 `vocab_grouped_candidates.csv`。
+- 排除表只影响候选词输出，不修改 `fixed_phrases.csv`，因此 `dare` 可被排除，但 `dare precedenza` 等固定搭配仍保留在固定搭配候选库中。
+- 本次命中排除 lemma 数量为 22 个，排除后 `vocab_grouped_candidates.csv` 剩余 4824 条。
+- 已更新 `data_sources/VOCAB_CANDIDATES_AUDIT.md`，新增人工排除词表总数、命中排除数量、被排除高频词 Top 100、排除后保留 lemma Top 100。
+- 本次未修改 `app.py`、`db.py`、`i18n.py`、`words.csv`、`signs.csv`、`official_quiz_ab.csv`、`fixed_phrases.csv`、`glossary.csv`。
+
+## 2026-06-05 官方题库候选词第二批人工排除
+
+- 已向 `data_sources/vocab_exclude_seed.csv` 追加第二批 7 个排除 lemma：`non`、`più`、`prima`、`durante`、`dopo`、`posto`、`presenza`。
+- 排除表当前共有 31 条。
+- 已重新运行 `tools/extract_vocab_candidates.py`，重新生成 `data_sources/vocab_candidates.csv`、`data_sources/vocab_grouped_candidates.csv` 和 `data_sources/VOCAB_CANDIDATES_AUDIT.md`。
+- 当前命中排除 lemma 数量为 29 个，排除后 `vocab_grouped_candidates.csv` 剩余 4817 条。
+- 本次保留了 `figura`、`raffigurare`、`indicare`、`rappresentare`、`preannunciare`、`consentire`、`vietare`、`consentito`、`vietato`、`obbligatorio`、`possibile` 等题干表达和重要判定词。
+- 本次未修改 `tools/extract_vocab_candidates.py` 的逻辑，也未修改 `app.py`、`db.py`、`i18n.py`、`words.csv`、`signs.csv`、`official_quiz_ab.csv`、`fixed_phrases.csv`、`glossary.csv`。
+
+## 2026-06-05 官方题库候选词人工审核队列
+
+- 已新增 `data_sources/vocab_review_queue.csv`，用于批量人工审核候选 lemma。
+- 审核队列从当前候选词中选取高频前 500 个 lemma，字段包括 `lemma`、`frequency`、`surface_forms`、`category`、`pos_guess`、`example_it`、`suggested_decision`、`decision`、`preferred_chinese`、`note`。
+- 已更新 `tools/extract_vocab_candidates.py`，候选词筛选现在支持读取 `vocab_review_queue.csv` 中的人工 `decision`。
+- 当前支持的人工 decision：`keep` 保留并标记为 keep；`exclude` 从候选库排除；`phrase` 保留并标记为 `phrase_candidate`；`review` 保留并标记为 `needs_review`；空值则继续使用原有种子表/排除表/自动建议逻辑。
+- 重新生成审核队列时，脚本会保留已经人工填写过的 `decision`、`preferred_chinese` 和 `note`，只补充新增 lemma。
+- 当前审核队列共有 500 行，`suggested_decision` 统计为：`keep` 31、`phrase` 4、`review` 465、`exclude` 0；当前人工 `decision` 为空 500 行。
+- 排除表和审核队列应用后，`data_sources/vocab_grouped_candidates.csv` 当前剩余 4817 条。
+- 后续不再需要一批批修改代码或排除词表，可以直接编辑 `data_sources/vocab_review_queue.csv` 的 `decision` 列。
+- 本次未修改 `app.py`、`db.py`、`i18n.py`、`words.csv`、`signs.csv`、`official_quiz_ab.csv`、`fixed_phrases.csv`、`glossary.csv`。
+
+## 2026-06-05 独立词汇审核工具
+
+- 已新增独立本地 Streamlit 工具 `tools/vocab_review_app.py`。
+- 启动方式为 `python -m streamlit run tools/vocab_review_app.py`，不接入正式 `app.py`，只用于本地候选词审核。
+- 工具读取 `data_sources/vocab_review_queue.csv`，支持按审核状态、自动建议和最低频率筛选，并支持按频率或 lemma 排序。
+- 工具支持通过中文按钮设置审核结果：保留、排除、短语、待定；写回时自动转换为 `keep`、`exclude`、`phrase`、`review`。
+- 工具支持编辑 `preferred_chinese` 和 `note`，保存前会把旧 `vocab_review_queue.csv` 备份到 `data/backups/`。
+- 工具支持点击“生成 selected candidates”，输出 `data_sources/vocab_selected_candidates.csv`，只包含 decision 为 `keep` 或 `phrase` 的候选词。
+- 已完成基础启动检查：`streamlit_status=200`。
+- 本次未修改 `app.py`、`db.py`、`i18n.py`、`words.csv`、`signs.csv`、`official_quiz_ab.csv`、`fixed_phrases.csv`、`glossary.csv`。
+
+## 2026-06-05 官方题库候选词人工词形归并表
+
+- 已新增 `data_sources/vocab_lemma_override.csv`，用于人工维护 surface form 到 lemma 的归并规则。
+- 已更新 `tools/extract_vocab_candidates.py`，候选词抽取现在支持人工词形归并表。
+- 当前归并优先级为：`vocab_lemma_override.csv` 人工规则 > 保守自动规则 > 原始词形。
+- 本次 `vocab_lemma_override.csv` 共有 69 条规则，命中 65 个唯一 surface form。
+- 保守自动规则本次归并 299 个唯一 surface form。
+- 归并前唯一词形数量为 4927，基础归并后 lemma 数量为 4570，减少重复 357 个。
+- 叠加人工排除表和审核队列 decision 后，`data_sources/vocab_grouped_candidates.csv` 当前输出 4521 条。
+- 已重新生成 `data_sources/vocab_candidates.csv`、`data_sources/vocab_grouped_candidates.csv`、`data_sources/vocab_review_queue.csv`、`data_sources/vocab_selected_candidates.csv` 和 `data_sources/VOCAB_CANDIDATES_AUDIT.md`。
+- 本次未修改 `app.py`、`db.py`、`i18n.py`、`words.csv`、`signs.csv`、`official_quiz_ab.csv`、`fixed_phrases.csv`、`glossary.csv`。
+
+## 2026-06-06 GitHub 上传文件夹整理
+
+- 已重新整理 `github_upload_ready/`，用于上传当前项目最新可发布版本。
+- 本次上传文件夹包含主应用代码、词库、交通图形库、文档、工具脚本、`docs/`、`.streamlit/` 和 `data_sources/` 中的候选词 CSV/审计报告。
+- 本次上传文件夹明确排除 `data/`、`data_backup_*/`、`__pycache__/`、`.venv/`、`.env`、`app.db`、`accounts.json`、`admin_logs.jsonl`、真实用户数据和运行日志。
+- `data_sources/official_quiz_ab.pdf` 未放入上传文件夹，只保留解析后的 `official_quiz_ab.csv` 和相关审计/候选词文件。
+- 已在 `github_upload_ready/MANIFEST.md` 记录包含和排除清单。
