@@ -1,6 +1,6 @@
 # GitHub Upload Manifest
 
-整理时间：2026-06-06
+整理时间：2026-06-08
 
 ## 已包含的主要文件
 
@@ -34,6 +34,14 @@
 - `docs/`
 - `tools/`
 - `data_sources/`
+
+## 本次重点更新
+
+- `docs/ACCOUNT_PERSISTENCE_AUDIT.md`
+- `tools/vocab_review_app.py`
+- `PROJECT_STATUS.md`
+
+`docs/ACCOUNT_PERSISTENCE_AUDIT.md` 记录了当前账号持久化排查结果：账号主数据预期位于 `data/app.db`，但 `data/` 不应上传 GitHub，线上正式用户应迁移到外部数据库。
 
 ## data_sources/ 当前包含
 

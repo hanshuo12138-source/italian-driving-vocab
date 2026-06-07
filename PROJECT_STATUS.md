@@ -701,3 +701,16 @@ docs/TERMS_OF_SERVICE.md
 - 本次上传文件夹明确排除 `data/`、`data_backup_*/`、`__pycache__/`、`.venv/`、`.env`、`app.db`、`accounts.json`、`admin_logs.jsonl`、真实用户数据和运行日志。
 - `data_sources/official_quiz_ab.pdf` 未放入上传文件夹，只保留解析后的 `official_quiz_ab.csv` 和相关审计/候选词文件。
 - 已在 `github_upload_ready/MANIFEST.md` 记录包含和排除清单。
+
+## 2026-06-08 独立词汇审核工具全量浏览优化
+
+- 已优化 `tools/vocab_review_app.py`，词汇审核工具现在从 `data_sources/vocab_grouped_candidates.csv` 读取全部候选 lemma，而不是只查看高频前 500 个。
+- 工具启动时会合并已有 `data_sources/vocab_review_queue.csv`，保留已经人工填写过的 `decision`、`preferred_chinese` 和 `note`。
+- 已新增排序选项：频率从高到低、频率从低到高、lemma 字母 A-Z、lemma 字母 Z-A。
+- 已新增关键词/前缀筛选，支持搜索 `lemma`、`surface_forms`、`example_it`、`preferred_chinese` 和 `note`。
+- 已新增 lemma 首字母筛选：全部、A-Z。
+- 已新增每页显示数量控制：50、100、200、500，并支持页码切换，避免一次性渲染全部候选词导致页面卡顿。
+- `surface_forms` 现在完整显示，方便检查阴阳性、单复数和动词变位是否已正确归并。
+- 原有按钮审核功能、中文释义编辑、备注编辑、保存前备份、生成 `vocab_selected_candidates.csv` 的逻辑均已保留。
+- 已完成启动检查：`streamlit_status=200`。
+- 本次未修改 `app.py`、`db.py`、`i18n.py`、`words.csv`、`signs.csv`、`official_quiz_ab.csv`、`fixed_phrases.csv`、`glossary.csv`。
