@@ -714,3 +714,27 @@ docs/TERMS_OF_SERVICE.md
 - 原有按钮审核功能、中文释义编辑、备注编辑、保存前备份、生成 `vocab_selected_candidates.csv` 的逻辑均已保留。
 - 已完成启动检查：`streamlit_status=200`。
 - 本次未修改 `app.py`、`db.py`、`i18n.py`、`words.csv`、`signs.csv`、`official_quiz_ab.csv`、`fixed_phrases.csv`、`glossary.csv`。
+
+## 2026-06-08 管理员后台数据持久性状态提示
+
+- 已在管理员后台“数据持久性测试”区域增加开发环境数据持久性状态提示。
+- 当前页面会显示数据库路径、`data/app.db` 是否存在、本次应用启动前数据库是否已存在、数据库文件大小。
+- 当前页面会显示 `users` 账号数量、`user_word_status` 学习记录数量、`remember_tokens` 数量。
+- 如果 `data/app.db` 不存在，会显示“当前本地数据库不存在，账号和学习记录不可用”的明显警告。
+- 如果应用启动前没有发现 `data/app.db`，但启动时自动创建了新的空数据库，会提示这通常表示当前运行目录没有原来的数据库文件，不是系统自动清空旧账号。
+- 页面增加说明：`data/` 已被 `.gitignore` 排除，不会上传 GitHub；换项目目录、重新部署、重新拉代码时，账号和学习记录不会自动跟随。
+- 本次只显示数量和路径，不显示密码哈希、salt、remember token 明文或其他敏感数据。
+- 本次未修改数据库结构，未重置任何数据，未自动创建测试账号。
+- 本次未修改 `words.csv`、`signs.csv`、`official_quiz_ab.csv` 或 `data_sources/*.csv`。
+
+## 2026-06-08 Streamlit Cloud 词库 CSV 编码读取修复
+
+- 已修复 Streamlit Cloud 读取 `words.csv` 时可能出现的 `UnicodeDecodeError`。
+- `load_words()` 不再直接使用 `pd.read_csv(WORDS_PATH)`，改为使用 `read_csv_with_fallback()`。
+- 当前 CSV 读取编码兜底顺序为：`utf-8-sig`、`utf-8`、`gb18030`、`gbk`、`latin1`。
+- 如果所有编码都失败，页面会显示“词库文件读取失败，请检查 words.csv 编码。”，并显示最后一个异常的简短信息，不再直接崩溃。
+- `latin1` 仅作为最后兜底；如果使用该编码读取成功，页面会提示后续建议统一转换为 UTF-8。
+- 管理员上传 CSV 预览和词库行数统计也复用了同一读取函数，提升 GB18030/GBK CSV 兼容性。
+- 本地检查显示当前 `words.csv` 使用 `gb18030` 可成功读取，共 484 条。
+- 已通过 `python -m py_compile app.py`。
+- 本次未修改 `words.csv`、`signs.csv`、`official_quiz_ab.csv`、`data_sources/*.csv`、`db.py` 或 `i18n.py`。

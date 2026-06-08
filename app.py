@@ -18,11 +18,11 @@ import streamlit as st
 
 from i18n import LANGUAGE_OPTIONS, t
 from db import (
-    DB_PATH,
     create_user,
     create_persistence_marker,
     delete_persistence_marker,
     get_analytics_summary,
+    get_database_persistence_status,
     get_due_review_word_ids,
     get_persistence_markers,
     get_user_role,
@@ -846,13 +846,40 @@ def render_language_selector() -> None:
             break
 
 
+CSV_ENCODING_FALLBACKS = ("utf-8-sig", "utf-8", "gb18030", "gbk", "latin1")
+
+
+def read_csv_with_fallback(source: Any) -> tuple[pd.DataFrame, str]:
+    last_error: Exception | None = None
+    for encoding in CSV_ENCODING_FALLBACKS:
+        try:
+            if hasattr(source, "seek"):
+                source.seek(0)
+            return pd.read_csv(source, encoding=encoding), encoding
+        except UnicodeDecodeError as exc:
+            last_error = exc
+        except Exception as exc:
+            last_error = exc
+            if encoding == CSV_ENCODING_FALLBACKS[-1]:
+                break
+    raise RuntimeError(str(last_error) if last_error else "unknown CSV decoding error")
+
+
 @st.cache_data(show_spinner=False)
 def load_words() -> pd.DataFrame:
     if not WORDS_PATH.exists():
         st.error(tr("words_missing"))
         st.stop()
 
-    words = pd.read_csv(WORDS_PATH).fillna("")
+    try:
+        words, encoding = read_csv_with_fallback(WORDS_PATH)
+    except Exception as exc:
+        st.error("词库文件读取失败，请检查 words.csv 编码。")
+        st.caption(f"最后错误：{exc}")
+        st.stop()
+    if encoding == "latin1":
+        st.warning("words.csv 使用 latin1 兜底编码读取成功，建议后续统一转换为 UTF-8。")
+    words = words.fillna("")
     words.columns = [column.strip() for column in words.columns]
     missing = REQUIRED_COLUMNS - set(words.columns)
     if missing:
@@ -1980,7 +2007,8 @@ def image_source_counts(values: pd.Series) -> dict[str, int]:
 
 def analyze_uploaded_words_csv(uploaded_file: Any) -> tuple[pd.DataFrame, dict[str, Any]]:
     uploaded_file.seek(0)
-    preview_df = pd.read_csv(uploaded_file).fillna("")
+    preview_df, _encoding = read_csv_with_fallback(uploaded_file)
+    preview_df = preview_df.fillna("")
     preview_df.columns = [str(column).strip() for column in preview_df.columns]
 
     missing_columns = [
@@ -2026,7 +2054,8 @@ def count_words_file(path: Path) -> int:
     if not path.exists():
         return 0
     try:
-        return int(len(pd.read_csv(path)))
+        words_df, _encoding = read_csv_with_fallback(path)
+        return int(len(words_df))
     except Exception:
         return 0
 
@@ -2208,17 +2237,42 @@ def render_persistence_test_area(username: str) -> None:
     st.subheader("数据持久性测试")
     st.caption("用于测试本地或 Streamlit Cloud 重新启动后 data/app.db 是否仍然保留。")
 
-    db_exists = DB_PATH.exists()
-    db_size = DB_PATH.stat().st_size if db_exists else 0
+    db_status = get_database_persistence_status()
+    db_exists = bool(db_status["db_exists"])
     col1, col2 = st.columns(2)
-    col1.caption(f"数据库路径：{DB_PATH}")
+    col1.caption(f"数据库路径：{db_status['db_path']}")
     col1.caption(f"当前服务器时间：{datetime.now().isoformat(timespec='seconds')}")
     col2.metric("数据库文件存在", "是" if db_exists else "否")
-    col2.metric("数据库文件大小", f"{db_size} bytes")
+    col2.metric("本次启动前已存在", "是" if db_status["db_existed_before_init"] else "否")
+
+    metrics = st.columns(4)
+    metrics[0].metric("数据库文件大小", f"{db_status['db_size_bytes']} bytes")
+    metrics[1].metric("users 账号数量", db_status["users_count"])
+    metrics[2].metric("学习记录数量", db_status["user_word_status_count"])
+    metrics[3].metric("remember_tokens 数量", db_status["remember_tokens_count"])
+
+    if not db_status["ok"]:
+        st.warning(f"读取数据库状态失败：{db_status['error']}")
 
     if not db_exists:
-        st.warning("当前没有找到 data/app.db。请先确认应用是否已完成数据库初始化。")
+        st.error("当前本地数据库不存在，账号和学习记录不可用。")
+        st.info(
+            "说明：data/ 已被 .gitignore 排除，不会上传 GitHub。"
+            "换项目目录、重新部署、重新拉代码时，账号不会自动跟随。"
+        )
         return
+
+    if not db_status["db_existed_before_init"]:
+        st.warning(
+            "本次应用启动前没有发现 data/app.db。应用启动时可能已经自动创建了一个新的空数据库。"
+            "如果你之前注册过账号，但这里 users 数量为 0，通常表示当前运行目录没有原来的 data/app.db，"
+            "不是系统自动清空了旧账号。"
+        )
+
+    st.info(
+        "提示：data/ 已被 .gitignore 排除，不会上传 GitHub。换项目目录、重新部署、重新拉代码时，"
+        "账号和学习记录不会自动跟随。请勿公开上传 data/app.db、密码哈希、salt 或 remember token。"
+    )
 
     with st.form("persistence_marker_form"):
         test_key = st.text_input("测试 key", value=f"deploy-test-{datetime.now().date().isoformat()}")

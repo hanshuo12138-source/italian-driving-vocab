@@ -16,6 +16,7 @@ DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "app.db"
 ACCOUNTS_PATH = DATA_DIR / "accounts.json"
 USERS_DIR = DATA_DIR / "users"
+DB_EXISTED_BEFORE_INIT = DB_PATH.exists()
 VALID_ROLES = {"user", "admin", "super_admin"}
 STATE_KEYS = {"favorites", "difficult", "learned", "wrong"}
 REVIEW_INTERVALS = {
@@ -923,6 +924,48 @@ def delete_persistence_marker(id: int) -> None:
             "DELETE FROM persistence_test WHERE id = ?",
             (int(id),),
         )
+
+
+def get_database_persistence_status() -> dict[str, Any]:
+    status: dict[str, Any] = {
+        "db_path": str(DB_PATH),
+        "db_exists": DB_PATH.exists(),
+        "db_existed_before_init": DB_EXISTED_BEFORE_INIT,
+        "db_size_bytes": DB_PATH.stat().st_size if DB_PATH.exists() else 0,
+        "users_count": 0,
+        "user_word_status_count": 0,
+        "remember_tokens_count": 0,
+        "ok": True,
+        "error": "",
+    }
+    if not DB_PATH.exists():
+        return status
+
+    try:
+        with get_connection() as connection:
+            table_names = {
+                str(row["name"])
+                for row in connection.execute(
+                    """
+                    SELECT name
+                    FROM sqlite_master
+                    WHERE type = 'table'
+                    """
+                ).fetchall()
+            }
+            count_tables = {
+                "users": "users_count",
+                "user_word_status": "user_word_status_count",
+                "remember_tokens": "remember_tokens_count",
+            }
+            for table_name, key in count_tables.items():
+                if table_name in table_names:
+                    row = connection.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+                    status[key] = int(row[0]) if row else 0
+    except Exception as exc:
+        status["ok"] = False
+        status["error"] = str(exc)
+    return status
 
 
 def get_analytics_summary() -> dict[str, Any]:

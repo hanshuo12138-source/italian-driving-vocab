@@ -37,11 +37,14 @@
 
 ## 本次重点更新
 
-- `docs/ACCOUNT_PERSISTENCE_AUDIT.md`
-- `tools/vocab_review_app.py`
+- `app.py`
+- `db.py`
 - `PROJECT_STATUS.md`
+- `docs/ACCOUNT_PERSISTENCE_AUDIT.md`
 
-`docs/ACCOUNT_PERSISTENCE_AUDIT.md` 记录了当前账号持久化排查结果：账号主数据预期位于 `data/app.db`，但 `data/` 不应上传 GitHub，线上正式用户应迁移到外部数据库。
+`app.py` 已包含 `words.csv` 编码兜底读取修复，支持 `utf-8-sig`、`utf-8`、`gb18030`、`gbk`、`latin1`。
+
+管理员后台数据持久性测试区域已增加数据库路径、数据库是否存在、启动前是否存在、users 数量、学习记录数量、remember token 数量等只读提示。
 
 ## data_sources/ 当前包含
 
