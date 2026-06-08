@@ -7,6 +7,7 @@ import os
 import re
 import secrets
 import shutil
+import sqlite3
 from html import escape, unescape
 from datetime import datetime
 from pathlib import Path
@@ -22,7 +23,6 @@ from db import (
     create_persistence_marker,
     delete_persistence_marker,
     get_analytics_summary,
-    get_database_persistence_status,
     get_due_review_word_ids,
     get_persistence_markers,
     get_user_role,
@@ -48,6 +48,8 @@ DOCS_DIR = BASE_DIR / "docs"
 PRIVACY_POLICY_PATH = DOCS_DIR / "PRIVACY_POLICY.md"
 TERMS_OF_SERVICE_PATH = DOCS_DIR / "TERMS_OF_SERVICE.md"
 DATA_DIR = BASE_DIR / "data"
+DB_PATH = DATA_DIR / "app.db"
+DB_EXISTED_BEFORE_INIT = DB_PATH.exists()
 STATE_PATH = DATA_DIR / "user_state.json"
 USERS_DIR = DATA_DIR / "users"
 ACCOUNTS_PATH = DATA_DIR / "accounts.json"
@@ -2230,6 +2232,50 @@ def render_admin_backend() -> None:
         st.success(tr("import_success", old=result["original_count"], new=result["new_count"]))
         st.info(tr("backup_saved", path=result["backup_path"]))
         st.rerun()
+
+
+def get_database_persistence_status() -> dict[str, Any]:
+    status: dict[str, Any] = {
+        "db_path": str(DB_PATH),
+        "db_exists": DB_PATH.exists(),
+        "db_existed_before_init": DB_EXISTED_BEFORE_INIT,
+        "db_size_bytes": DB_PATH.stat().st_size if DB_PATH.exists() else 0,
+        "users_count": 0,
+        "user_word_status_count": 0,
+        "remember_tokens_count": 0,
+        "ok": True,
+        "error": "",
+    }
+    if not DB_PATH.exists():
+        return status
+
+    try:
+        connection = sqlite3.connect(DB_PATH)
+        try:
+            table_names = {
+                str(row[0])
+                for row in connection.execute(
+                    """
+                    SELECT name
+                    FROM sqlite_master
+                    WHERE type = 'table'
+                    """
+                ).fetchall()
+            }
+            for table_name, key in {
+                "users": "users_count",
+                "user_word_status": "user_word_status_count",
+                "remember_tokens": "remember_tokens_count",
+            }.items():
+                if table_name in table_names:
+                    row = connection.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+                    status[key] = int(row[0]) if row else 0
+        finally:
+            connection.close()
+    except Exception as exc:
+        status["ok"] = False
+        status["error"] = str(exc)
+    return status
 
 
 def render_persistence_test_area(username: str) -> None:

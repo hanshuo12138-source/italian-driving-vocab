@@ -1,21 +1,21 @@
-# GitHub Upload Manifest
+﻿# GitHub Upload Ready Manifest
 
-整理时间：2026-06-08
+Last updated: 2026-06-08
 
-## 已包含的主要文件
+This folder is a clean upload-ready copy of the current project. It keeps the project structure needed for GitHub / Streamlit Cloud deployment while excluding local runtime data and sensitive files.
 
+## Included Main Files
+
+- `.gitignore`
+- `.streamlit/config.toml`
+- `ads.json`
+- `AGENTS.md`
 - `app.py`
 - `db.py`
 - `i18n.py`
-- `words.csv`
-- `signs.csv`
-- `ads.json`
-- `fixed_phrases.csv`
-- `glossary.csv`
 - `requirements.txt`
 - `README.md`
 - `DEPLOYMENT.md`
-- `AGENTS.md`
 - `PROJECT_NOTES.md`
 - `PROJECT_STATUS.md`
 - `ROADMAP.md`
@@ -26,41 +26,35 @@
 - `WORDS_QUALITY_AUDIT.md`
 - `SIGN_COVERAGE_AUDIT.md`
 - `PERSISTENCE_TEST_GUIDE.md`
-- `.gitignore`
+- `words.csv`
+- `signs.csv`
+- `glossary.csv`
+- `fixed_phrases.csv`
 
-## 已包含的目录
+## Included Directories
 
-- `.streamlit/`
 - `docs/`
 - `tools/`
 - `data_sources/`
+- `.streamlit/`
 
-## 本次重点更新
+## Included Data Source Files
 
-- `app.py`
-- `db.py`
-- `PROJECT_STATUS.md`
-- `docs/ACCOUNT_PERSISTENCE_AUDIT.md`
+- `data_sources/README.md`
+- `data_sources/official_quiz_ab.csv`
+- `data_sources/OFFICIAL_QUIZ_AB_AUDIT.md`
+- `data_sources/vocab_candidates.csv`
+- `data_sources/VOCAB_CANDIDATES_AUDIT.md`
+- `data_sources/vocab_category_seed.csv`
+- `data_sources/vocab_exclude_seed.csv`
+- `data_sources/vocab_grouped_candidates.csv`
+- `data_sources/vocab_lemma_override.csv`
+- `data_sources/vocab_review_queue.csv`
+- `data_sources/vocab_selected_candidates.csv`
 
-`app.py` 已包含 `words.csv` 编码兜底读取修复，支持 `utf-8-sig`、`utf-8`、`gb18030`、`gbk`、`latin1`。
+## Excluded Runtime / Sensitive Data
 
-管理员后台数据持久性测试区域已增加数据库路径、数据库是否存在、启动前是否存在、users 数量、学习记录数量、remember token 数量等只读提示。
-
-## data_sources/ 当前包含
-
-- `official_quiz_ab.csv`
-- `OFFICIAL_QUIZ_AB_AUDIT.md`
-- `README.md`
-- `vocab_candidates.csv`
-- `VOCAB_CANDIDATES_AUDIT.md`
-- `vocab_category_seed.csv`
-- `vocab_exclude_seed.csv`
-- `vocab_grouped_candidates.csv`
-- `vocab_lemma_override.csv`
-- `vocab_review_queue.csv`
-- `vocab_selected_candidates.csv`
-
-## 已明确排除
+The following must not be uploaded to GitHub and were intentionally excluded or removed if found:
 
 - `data/`
 - `data_backup_*/`
@@ -70,11 +64,16 @@
 - `app.db`
 - `accounts.json`
 - `admin_logs.jsonl`
-- `data_sources/official_quiz_ab.pdf`
-- 任何真实用户数据、remember token、统计事件、persistence marker、数据库运行文件
+- user account data
+- learning records
+- remember tokens
+- analytics/statistics runtime data
 
-## 上传说明
+## Intentionally Not Included
 
-请上传 `github_upload_ready/` 文件夹中的内容到 GitHub 仓库根目录。
+- `data_sources/official_quiz_ab.pdf`: original source PDF, not needed for app deployment and kept out of the upload-ready folder.
+- `*_remote.js`: source-extraction/helper files are not part of the current deployment upload set.
 
-不要上传项目根目录里的 `data/`、`data_backup_*/` 或 `data_sources/official_quiz_ab.pdf`。
+## Upload Status
+
+`github_upload_ready/` is intended to be directly uploadable to GitHub as the current project version, as long as no local runtime data is manually added before upload.

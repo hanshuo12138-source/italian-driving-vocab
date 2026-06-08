@@ -738,3 +738,23 @@ docs/TERMS_OF_SERVICE.md
 - 本地检查显示当前 `words.csv` 使用 `gb18030` 可成功读取，共 484 条。
 - 已通过 `python -m py_compile app.py`。
 - 本次未修改 `words.csv`、`signs.csv`、`official_quiz_ab.csv`、`data_sources/*.csv`、`db.py` 或 `i18n.py`。
+
+## 2026-06-08 Streamlit Cloud db 导入兼容修复
+
+- 已排查 `app.py` 顶部 `from db import (...)` 与 `db.py` 实际导出名称。
+- Streamlit Cloud 报错最可能缺失名称为 `get_database_persistence_status`：线上可能出现 `app.py` 已更新、`db.py` 仍为旧版本的不同步状态。
+- 已将 `get_database_persistence_status` 从 `from db import (...)` 中移除，改为在 `app.py` 内提供只读兜底实现。
+- 当前 `app.py` 从 `db.py` 导入的所有名称均已验证存在，无缺失项。
+- 已通过 `python -m py_compile app.py db.py`。
+- 已通过 `python -c "import db; import app; print('import ok')"`。
+- 本次未修改 `words.csv`、`signs.csv`、`official_quiz_ab.csv`、`data_sources/*.csv`、`glossary.csv` 或 `fixed_phrases.csv`。
+
+## 2026-06-08 GitHub 上传准备目录同步规则
+
+- 已在 `AGENTS.md` 中新增长期规则：以后每次对本项目进行任何代码、文档、配置、数据模板、工具脚本修改后，都必须同步更新 `github_upload_ready/`。
+- GitHub 上传准备目录固定为：`C:\Users\20767\Documents\Codex\2026-05-30\python-streamlit-1-2-3-4\github_upload_ready`。
+- 同步时必须保持原项目目录结构，并同步需要上传 GitHub 的修改文件或新增文件，例如 `app.py`、`db.py`、`i18n.py`、`requirements.txt`、`README.md`、`PROJECT_STATUS.md`、`docs/`、`tools/`、`data_sources/`、`.streamlit/`、`ads.json`、`words.csv`、`signs.csv` 等。
+- 同步时必须排除运行数据和敏感数据，包括 `data/`、`data_backup_*/`、`__pycache__/`、`.venv/`、`.env`、`app.db`、`accounts.json`、`admin_logs.jsonl`、用户账号数据、学习记录、remember token、统计数据。
+- 如果不确定某个文件是否应该上传 GitHub，优先不同步，并在回复中说明。
+- 以后每次完成任务后的回复里，都要额外列出：本次同步到 `github_upload_ready/` 的文件、本次没有同步的敏感/运行数据、`github_upload_ready/` 是否已经可以直接用于上传 GitHub。
+- 本次按用户要求只修改 `AGENTS.md` 和 `PROJECT_STATUS.md`，未修改 `app.py`、`db.py`、`words.csv`、`signs.csv` 或 `data_sources/*.csv`。
